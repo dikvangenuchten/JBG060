@@ -1,0 +1,25 @@
+"""Place the zips in one location and run this script to recursively unzip everything"""
+import zipfile
+import os
+
+data_location = '../data/'
+
+
+def search_and_unzip(location):
+    list_dir = os.listdir(location)
+    print('Searching for zips in {0}...'.format(location))
+
+    for item in list_dir:
+        if zipfile.is_zipfile(location + item):
+            print('Found zip: {0}'.format(location + item))
+            with zipfile.ZipFile(location + item, 'r') as zipObj:
+                zipObj.extractall(location)
+                # os.remove(location + item)
+
+    list_dir = os.listdir(location)
+    for item in list_dir:
+        if os.path.isdir(location + item):
+            search_and_unzip('{0}{1}/'.format(location, item))
+
+
+search_and_unzip(data_location)
