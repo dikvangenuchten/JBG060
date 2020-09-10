@@ -157,3 +157,6 @@ dmypy.json
 .idea/
 
 data/
+
+1.*Preprocessing data/processed/*
+!1.*Preprocessing data/processed/1.*Overview-empty.csv
