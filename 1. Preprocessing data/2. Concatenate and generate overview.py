@@ -15,10 +15,12 @@ def search_and_concat(location):
     Also generating a overview file
     """
     list_dir = os.listdir(location)
+    if location[-6:] == '_rels/':
+        return
     print(f'Searching for tables in {location}...')
 
     for item in list_dir:
-        if os.path.isdir(location + item):
+        if os.path.isdir(f"{location}{item}"):
             search_and_concat(f'{location}{item}/')
         else:
             filename, file_extension = os.path.splitext(f"{location}{item}")
@@ -69,7 +71,11 @@ def search_and_concat(location):
                         result_del = p.search(data)
 
                         if result_del is not None:
-                            table = pd.read_csv(f"{location}{item}", delimiter=";", decimal=",")
+                            if data[0:8] == 'Locatie;':
+                                table = pd.read_csv(f"{location}{item}", delimiter=";", decimal=",", header=7)
+                                table = table[:-2]
+                            else:
+                                table = pd.read_csv(f"{location}{item}", delimiter=";", decimal=",")
                         else:
                             table = pd.read_csv(f"{location}{item}")
 
@@ -90,6 +96,13 @@ def search_and_concat(location):
                     if len(dataframes[result.group(1)]) != len(old_df) + len(table):
                         log_error(f"ERROR: found duplicate rows in concatenating {location}{item}")
                 else:
+                    overview = pd.read_excel("processed/1. Overview.xlsx", index_col=0)
+                    overview = overview.append({
+                        'location': location,
+                        'columns': ', '.join(table.columns),
+                        'nr_rows': len(table)
+                    }, ignore_index=True).drop_duplicates()
+                    overview.to_excel("processed/1. Overview.xlsx")
                     table.to_csv(f"processed/{new_file}.csv")
 
     save_and_make_overview(dataframes)
@@ -106,8 +119,12 @@ def save_and_make_overview(dfs):
             'location': df_location,
             'columns': ', '.join(dfs[df_location].columns),
             'nr_rows': len(dfs[df_location])
-        }, ignore_index=True)
-        dfs[df_location].to_csv(f"processed/{new_location}.csv")
+        }, ignore_index=True).drop_duplicates()
+        if 'Unnamed: 0' in dfs[df_location].columns:
+            dfs[df_location].to_csv(f"processed/{new_location}.csv", index=False)
+        else:
+            dfs[df_location].to_csv(f"processed/{new_location}.csv")
+
     overview.to_excel("processed/1. Overview.xlsx")
 
 
@@ -123,11 +140,22 @@ def set_unique_column_to_index(df):
         print("Error only 0 rows")
         return
 
-    index_column = df.nunique().sort_values(ascending=False).index[0]
+    if 'Time' in df.columns:
+        index_column = 'Time'
+    elif 'Unnamed: 0' in df.columns:
+        index_column = 'Unnamed: 0'
+    elif 'DAG' in df.columns:
+        index_column = 'DAG'
+    elif 'dem' in df.columns:
+        index_column = 'dem'
+    elif 'TimeStamp' in df.columns:
+        index_column = 'TimeStamp'
+    else:
+        index_column = df.nunique().sort_values(ascending=False).index[0]
 
     if (not isinstance(df.loc[0, index_column], int)
             and not isinstance(df.loc[0, index_column], float)
-            and is_date(df.loc[0, index_column])):
+            and is_date(str(df.loc[0, index_column]))):
         df[index_column] = pd.to_datetime(df[index_column])
     df.set_index(index_column, inplace=True)
 
