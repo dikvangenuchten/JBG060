@@ -30,10 +30,10 @@ def search_and_concat(location):
                 regex = f"(.*Download__).*\{file_extension}"
                 p = re.compile(regex)
                 result = p.search(f"{location}{item}")
+                is_download = False
 
-                if (result is not None):
-                    log_error(f"ERROR: {location}{item}, cannot be parsed into dataframe (1)")
-                    continue
+                if result is not None:
+                    is_download = True
 
                 if result is None:
                     regex = f"(.*_[a-zA-Z]*)[0-9]*\{file_extension}"
@@ -45,8 +45,9 @@ def search_and_concat(location):
                         regex = f"(.*Temp)[0-9]*\{file_extension}"
                         p = re.compile(regex)
                         result = p.search(f"{location}{item}")
+
+                        # Probably not a dataframe that is divided among more than one file
                         if result == None:
-                            log_error(f"No regex found for file {location}{item}")
                             print(f"No regex found for file {location}{item}")
 
                 if result is not None:
@@ -61,7 +62,7 @@ def search_and_concat(location):
                         print(f"Already parsed {new_file}.csv")
                         continue
 
-                # Read as excel if file is excel, otherwise read as table
+                # Read as excel if file is excel, otherwise read as csv
                 if file_extension == '.xlsx':
                     table = pd.read_excel(f"{location}{item}")
                 else:
@@ -77,11 +78,17 @@ def search_and_concat(location):
                             else:
                                 table = pd.read_csv(f"{location}{item}", delimiter=";", decimal=",")
                         else:
-                            table = pd.read_csv(f"{location}{item}")
+                            if is_download:
+                                table = pd.read_csv(f"{location}{item}", skiprows=2)
+                            else:
+                                table = pd.read_csv(f"{location}{item}")
 
                 if table.columns[0] == 'Column1':
                     table.columns = table.iloc[9]
                     table = table[10:].reset_index(drop=True)
+                elif table.columns[0] == 'Waterschap Aa en Maas':
+                    table.columns = table.iloc[8].fillna('')
+                    table = table[9:].reset_index(drop=True)
 
                 table = set_unique_column_to_index(table)
                 if table is None:
@@ -109,6 +116,9 @@ def search_and_concat(location):
 
 
 def save_and_make_overview(dfs):
+    """
+    Saves the dataframes to csv files and make an overview in Overview.xlsx
+    """
     overview = pd.read_excel("processed/1. Overview.xlsx", index_col=0)
     for df_location in dfs:
         new_location = df_location.replace("../", "").replace("/", "_")
@@ -120,10 +130,10 @@ def save_and_make_overview(dfs):
             'columns': ', '.join(dfs[df_location].columns),
             'nr_rows': len(dfs[df_location])
         }, ignore_index=True).drop_duplicates()
-        if 'Unnamed: 0' in dfs[df_location].columns:
+        if 'Unnamed: 0' in dfs[df_location].columns or dfs[df_location].index.name == 'Unnamed: 0':
             dfs[df_location].to_csv(f"processed/{new_location}.csv", index=False)
         else:
-            dfs[df_location].to_csv(f"processed/{new_location}.csv")
+            dfs[df_location].sort_index().to_csv(f"processed/{new_location}.csv")
 
     overview.to_excel("processed/1. Overview.xlsx")
 
@@ -150,6 +160,8 @@ def set_unique_column_to_index(df):
         index_column = 'dem'
     elif 'TimeStamp' in df.columns:
         index_column = 'TimeStamp'
+    elif 'datumBeginMeting' in df.columns:
+        index_column = 'datumBeginMeting'
     else:
         index_column = df.nunique().sort_values(ascending=False).index[0]
 
