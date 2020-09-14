@@ -3,8 +3,6 @@ import re
 import os
 import csv
 
-# TODO make one overview file
-
 data_location = '../data/'
 dataframes = {}
 
