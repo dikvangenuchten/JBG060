@@ -158,5 +158,5 @@ dmypy.json
 
 data/
 
-1.*Preprocessing data/processed/*
-!1.*Preprocessing data/processed/1.*Overview-empty.xlsx
+preprocessing/processed/*
+!preprocessing/processed/1.*Overview-empty.xlsx
