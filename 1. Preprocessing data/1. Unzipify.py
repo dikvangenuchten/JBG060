@@ -7,7 +7,7 @@ data_location = '../data/'
 
 def search_and_unzip(location):
     list_dir = os.listdir(location)
-    print('Searching for zips in {0}...'.format(location))
+    print(f'Searching for zips in {location}...')
 
     for item in list_dir:
         if zipfile.is_zipfile(location + item):
