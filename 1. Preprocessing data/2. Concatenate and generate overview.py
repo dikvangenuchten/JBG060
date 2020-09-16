@@ -13,8 +13,6 @@ def search_and_concat(location):
     Also generating a overview file
     """
     list_dir = os.listdir(location)
-    if location[-6:] == '_rels/':
-        return
     print(f'Searching for tables in {location}...')
 
     for item in list_dir:
