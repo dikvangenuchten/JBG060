@@ -285,6 +285,3 @@ def log_error(string):
     f = open("error.log", "a")
     f.write(f"{string} \n")
     f.close()
-
-
-search_and_concat(dirs)
