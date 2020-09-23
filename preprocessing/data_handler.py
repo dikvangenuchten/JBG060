@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 
 class DataHandler:
@@ -7,7 +8,7 @@ class DataHandler:
         self.flow_path = flow_path
         self.dir_path = dir_path
         self.flow_df = None
-        self.x_shape = (5, 48)
+        self.x_shape = (1, 48)
 
     def load_data(self):
         """"
@@ -37,7 +38,7 @@ class DataHandler:
         with e.g. the actual rain of hours 0 to 48
         and the predicted rain of hours 48 to 96
         """
-        return self._get_flow(index)
+        return np.array(self._get_flow(index))
 
     def _get_flow(self, t, delta=48):
         """

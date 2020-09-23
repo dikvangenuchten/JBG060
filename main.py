@@ -25,13 +25,12 @@ if __name__ == '__main__':
     if args.model:
         data_handler = DataHandler(data_path)
         train_data, test_data = data_handler.load_data()
-        exit()
 
         model = DiffPredictor("pump_1")
         model.build(data_handler.x_shape)
         model.compile(
             optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.MSE(),
+            loss=tf.keras.losses.MSE,
             metrics=[],
             run_eagerly=True
         )
