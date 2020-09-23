@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class DataHandler:
     def __init__(self, dir_path):
         self.dir_path = dir_path
@@ -25,3 +28,9 @@ class DataHandler:
         with e.g. the actual rain of hours 0 to 48
         and the predicted rain of hours 48 to 96
         """
+
+    def _get_flow(self, t, duration):
+        pass
+
+    def _get_rainfall_prediction(self, t, duration):
+        pass

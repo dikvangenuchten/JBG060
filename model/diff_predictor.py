@@ -7,10 +7,13 @@ class DiffPredictor(tf.keras.Model):
         super().__init__()
         self.pump_station = pump_station
 
+    def get_config(self):
+        super(DiffPredictor, self).get_config()
+
     def build(self, input_shape):
         pass
 
-    def __call__(self, *args, **kwargs):
+    def call(self, inputs, training=None, mask=None):
         pass
 
     def save(self,
