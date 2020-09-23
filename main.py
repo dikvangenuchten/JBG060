@@ -24,8 +24,8 @@ if __name__ == '__main__':
         concatenate_and_generate_overview.search_and_concat(data_path)
     if args.model:
         data_handler = DataHandler(data_path)
-        exit()
         train_data, test_data = data_handler.load_data()
+        exit()
 
         model = DiffPredictor("pump_1")
         model.build(data_handler.x_shape)
