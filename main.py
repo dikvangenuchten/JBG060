@@ -1,9 +1,15 @@
+from preprocessing.data_handler import DataHandler
+from model.diff_predictor import DiffPredictor
+import os
+import tensorflow as tf
 from preprocessing import concatenate_and_generate_overview
 from model import lstm
 from preprocessing import unzipify
 import argparse
 
 data_path = "data"
+model_dir = "saved_model"
+epochs = 10
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -17,6 +23,27 @@ if __name__ == '__main__':
     if args.concat:
         concatenate_and_generate_overview.search_and_concat(data_path)
     if args.model:
-        lstm.create_model()
+        data_handler = DataHandler(data_path)
+        exit()
+        train_data, test_data = data_handler.load_data()
 
+        model = DiffPredictor("pump_1")
+        model.build(data_handler.x_shape)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(),
+            loss=tf.keras.losses.MSE(),
+            metrics=[],
+            run_eagerly=True
+        )
 
+        for epoch in range(epochs):
+            print(f"Starting Epoch {epoch}")
+            model.fit(train_data)
+            print(f"Finished training on Epoch {epoch}")
+            model.evaluate(test_data)
+            print(f"Finished evaluation on Epoch {epoch}")
+            model.save(os.path.join(model_dir, "checkpoints", str(epoch)))
+
+        # TODO Write proper validation tool
+
+        model.save(model_dir)
