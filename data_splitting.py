@@ -1,6 +1,4 @@
-import numpy as np
 import pandas as pd
-from datetime import datetime
 
 rainfall_data = pd.read_csv('rainfallpredictions1_1.csv')
 
@@ -18,10 +16,29 @@ def split_date_column(df, column: str):
 
 new_rainfall_data = split_date_column(rainfall_data, 'Time')
 
-# def split_train_test(df):
-#     '''Takes a dataframe with split date columns and splits it in the
-#     following way: for every month, take the last 7 consecutive days.'''
+def create_test_data(df, final_days: int):
+    '''Takes a dataframe with split date columns and creates test data in the
+    following way: for every month, take the last 7 consecutive days.'''
 
-month_groups = new_rainfall_data.groupby(['Year', 'Month'])
-final_days = month_groups.tail(n=7)
-print(final_days[['Time', 'Year', 'Month', 'Day']])
+    month_groups = df.groupby(['Year', 'Month'])
+    test_data = month_groups.tail(n = final_days)
+
+    return test_data
+
+test_data = create_test_data(new_rainfall_data, 7)
+
+def create_train_data(df, test_df):
+    '''Creates the training data by removing the rows that are already
+    in the test dataframe made by the create_test_data function.'''
+
+    indexed_test_data = test_df.reset_index()
+    index_list = indexed_test_data['index'].tolist()
+    train_data = df.drop(index_list)
+
+    return train_data
+
+train_data = create_train_data(new_rainfall_data, test_data)
+
+
+
+
