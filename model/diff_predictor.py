@@ -1,20 +1,20 @@
 import os
 import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Conv2D
 
 
 class DiffPredictor(tf.keras.Model):
     def __init__(self, pump_station):
         super().__init__()
+        self.conv_1 = Conv2D(32, kernel_size=3, activation='relu', input_shape=input_shape)
         self.pump_station = pump_station
-
-    def get_config(self):
-        super(DiffPredictor, self).get_config()
 
     def build(self, input_shape):
         pass
 
     def call(self, inputs, training=None, mask=None):
-        pass
+        return self.conv_1(inputs)
 
     def save(self,
              filepath,
