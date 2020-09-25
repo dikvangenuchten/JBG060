@@ -28,23 +28,23 @@ if __name__ == '__main__':
         data_handler = DataHandler(data_path)
         train_data, test_data = data_handler.load_data()
 
-        model = DiffPredictor("pump_1")
-        model.build(data_handler.x_shape)
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(),
-            loss=tf.keras.losses.MSE,
-            metrics=[],
-            run_eagerly=True
-        )
+    model = DiffPredictor("helftheuvel")
+    model.build(data_handler.x_shape)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=tf.keras.losses.MSE,
+        metrics=[],
+        run_eagerly=True
+    )
 
-        for epoch in range(epochs):
-            print(f"Starting Epoch {epoch}")
-            model.fit(train_data)
-            print(f"Finished training on Epoch {epoch}")
-            model.evaluate(test_data)
-            print(f"Finished evaluation on Epoch {epoch}")
-            model.save(os.path.join(model_dir, "checkpoints", str(epoch)))
+    for epoch in range(epochs):
+        print(f"Starting Epoch {epoch}")
+        model.fit(train_data)
+        print(f"Finished training on Epoch {epoch}")
+        model.evaluate(test_data)
+        print(f"Finished evaluation on Epoch {epoch}")
+        model.save(os.path.join(model_dir, "checkpoints", str(epoch)))
 
-        # TODO Write proper validation tool
+    # TODO Write proper validation tool
 
-        model.save(model_dir)
+    model.save(model_dir)

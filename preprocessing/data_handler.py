@@ -1,12 +1,23 @@
 import os
 import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 class DataHandler:
-    def __init__(self, dir_path, flow_path=os.path.join('preprocessing', 'processed', 'helftheuvel_1hour.csv')):
+    def __init__(self, pump_station_name: str,
+                 actual_rainfall_path: str = "processed/data_rainfall_rain_timeseries_Download__.csv",
+                 predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
+                 flow_path: str = os.path.join('preprocessing', 'processed', 'helftheuvel_1hour.csv')):
+        self.actual_rainfall_path = actual_rainfall_path
+        self.predicted_rainfall_path = predicted_rainfall_path
+        self.pump_station_name = pump_station_name
+        self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
+        self.predicted_rainfall_data = pd.read_csv(self.predicted_rainfall_path)
+
+        print(self.actual_rainfall_data)
+
         self.flow_path = flow_path
-        self.dir_path = dir_path
         self.flow_df = None
         self.x_shape = (1, 48)
 
