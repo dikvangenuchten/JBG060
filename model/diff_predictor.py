@@ -1,20 +1,21 @@
 import os
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Conv2D
+from tensorflow.keras.layers import Conv1D, Flatten, Dense
 
 
 class DiffPredictor(tf.keras.Model):
     def __init__(self, pump_station):
         super().__init__()
-        self.conv_1 = Conv2D(32, kernel_size=3, activation='relu', input_shape=input_shape)
+        self.conv_1 = Conv1D(4, kernel_size=6, activation="relu", padding="same")
+        self.conv_2 = Conv1D(2, kernel_size=6, activation="relu", padding="same")
+        self.conv_3 = Conv1D(1, kernel_size=3, activation="relu", padding="same")
         self.pump_station = pump_station
 
-    def build(self, input_shape):
-        pass
-
     def call(self, inputs, training=None, mask=None):
-        return self.conv_1(inputs)
+        x = self.conv_1(inputs)
+        x = self.conv_2(x)
+        x = self.conv_3(x)
+        return tf.squeeze(x, axis=-1)
 
     def save(self,
              filepath,
