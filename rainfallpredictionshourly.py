@@ -4,6 +4,8 @@ import numpy as np
 
 
 def loadHarmonieData(path:str)->pd.DataFrame:
+    """Loads the Harmonie data and cleans it for further processing"""
+
     #opening the data for harmonie predictions 
     Harmonie= []
     Harmonie.append(pd.read_csv(path+'2018_harmonie_juli_augustus_predictions.csv',';'))
@@ -20,11 +22,11 @@ def loadHarmonieData(path:str)->pd.DataFrame:
     #Setting inline
     Harmonie = Harmonie[['ModelDate','Time','Prediction']]
     return Harmonie
-"""Loads the Harmonie data and cleans it for further processing"""
 
 
 
 def loadHirlamData(path:str)->pd.DataFrame:
+    """Loads the Hirlam data and cleans it for further processing"""
     #opening the data for hirlam predictions
     Hirlam = []
     Hirlam.append(pd.read_csv(path+'2018_hirlam_predictions.csv',';'))
@@ -35,9 +37,12 @@ def loadHirlamData(path:str)->pd.DataFrame:
     #removing errors
     Hirlam = Hirlam[Hirlam['Prediction']>-2]
     return Hirlam
-"""Loads the Hirlam data and cleans it for further processing"""
+
 
 def loadActualData(path:str)->pd.DataFrame:
+    """Loads and processes the actual data
+
+    path is folder with all the actual files inside it."""    
     actualfiles = os.listdir(os.getcwd()+path)
     actual = []
     for file in actualfiles:
@@ -50,12 +55,12 @@ def loadActualData(path:str)->pd.DataFrame:
     actual_hrs['total'] =actual_hrs.loc[:,list(actual_hrs.columns)[1:433]].sum(axis=1)
     actual_hrs['avg'] =actual_hrs['total']/len(list(actual_hrs.columns)[1:433])
     return actual_hrs
-"""Loads and processes the actual data
 
-path is folder with all the actual files inside it."""    
 
 
 def hourpreds(data: pd.DataFrame)->list:
+    """Turns prediction dataframe into lists of dataframes based on
+    difference between time of prediction and actual time."""
     #sets columns to datetime format
     data['ModelDate'] = pd.to_datetime(data['ModelDate'],format='%Y-%m-%d %H',exact=True)
     data['Time'] = pd.to_datetime(data['Time'],format='%Y-%m-%d %H',exact=True)
@@ -81,11 +86,13 @@ def hourpreds(data: pd.DataFrame)->list:
         group = group[1].reset_index().drop('index',axis=1)
         frames.append(pd.DataFrame(group))
     return frames
-"""Turns prediction dataframe into lists of dataframes based on
- difference between time of prediction and actual time."""
+
  
 
 def getTheRainfallData(pathPred:str,pathActual:str)->pd.DataFrame:
+    """Matches the predictions and actual data on time of rainfall.
+    Needs paths from wd to both place with 6 prediction csv and with the folder of actual data"""
+
     #get prediction data
     pred_harmonie = hourpreds(loadHarmonieData(pathPred))
     pred_hirlam = hourpreds(loadHirlamData(pathPred))
@@ -105,11 +112,9 @@ def getTheRainfallData(pathPred:str,pathActual:str)->pd.DataFrame:
         frame[f'harmonie_pred {frame["tdiff"][0]}'] = frame['Prediction']
         preds = preds.merge(frame[['Time',f'harmonie_pred {frame["measurepoint"][0]}']],on='Time',how='left')
     return preds
-"""Matches the predictions and actual data on time of rainfall.
-Needs paths from wd to both place with 6 prediction csv and with the folder of actual data"""
 
 
 
-
-getTheRainfallData(pathPred = 'rainfall/rainfall/',pathActual = 'rainfall/rainfall/rain_timeseries')
+if name == "main":
+    getTheRainfallData(pathPred = 'rainfall/rainfall/',pathActual = 'rainfall/rainfall/rain_timeseries')
 
