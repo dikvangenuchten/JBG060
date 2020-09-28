@@ -9,10 +9,9 @@ def append_col(df1, df2, append_colname, index_colname1, index_colname2, new_col
 
         try:
             append_list.append(df2[df2[index_colname2] == value][append_colname].values[0])
-        except:
+        except IndexError:
             append_list.append(None)
 
     df1[new_colname] = append_list
 
     print(append_colname + ' appended as ' + new_colname)
-    return
