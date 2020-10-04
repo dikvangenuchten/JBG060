@@ -1,5 +1,5 @@
 def make_rain_buckets(df, rain_col_name):
-    '''Adds rainfall buckets to a df, needs the df and the colname of the rainfall data as input'''
+    '''Adds rainfall buckets to a df, needs the df and the col_name of the rainfall data as input'''
 
     rainfall_list = df[rain_col_name].values.tolist()
 
