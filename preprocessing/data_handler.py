@@ -42,7 +42,8 @@ class DataHandler:
                 self.predicted_rainfall_data.Time
             ).dt.hour.astype(float)
             self.predicted_rainfall_data = self.predicted_rainfall_data[self.predicted_rainfall_data.columns[3:7]]
-
+        print(self.flow_df.describe())
+        print(self.diff.describe())
         if self.x_shape is None:
             x, y = self.__getitem__(48)
             # Shape is (batch_size, time, features)
@@ -110,7 +111,7 @@ class DataHandler:
         :param delta: int, the amount of rows after t we want to get the data from
         :raise IndexOutOfRange error when delta is bigger then t
         """
-        return self.flow_df[t - delta:t]
+        return self.flow_df[t:t+delta]
 
     def _get_rainfall_prediction(self, t, delta=48):
         """"
