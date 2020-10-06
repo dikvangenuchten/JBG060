@@ -3,7 +3,7 @@ import math
 
 class Pump:
     '''Class for pumps. A pump needs to have a max capacity, max pump flow and a starting level. Has functions to
-    get update the level, predict the level, get the level bucket (the level rounded on the closed ten and
+    get update the level, predict the level, get the level bucket (the level rounded on the closed ten) and
     the amount of water that is being pumped away'''
 
     def __init__(self, max_capacity, max_pump_flow, start_level):
