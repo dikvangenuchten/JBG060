@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 
 def rain_stacked_bar_chart(df, time_col, path):
-    """needs the dataframe and the column of the time as input, assumes you made the rain buckets with the
+    """needs the data frame and the column of the time as input, assumes you made the rain buckets with the
     make_rain_bucket function. Saves a bar chart to path"""
     time = df[time_col].values.tolist()
     change_index = [0]
