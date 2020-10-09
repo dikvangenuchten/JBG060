@@ -14,13 +14,13 @@ class SewageSystem:
         self.discount_factor = 0.90
         self.total_outflow_handled = 0
 
-    def step(self, model_inputs: [np.ndarray], actual_levels: [np.ndarray]):
+    def step(self, pump_step_data: dict):
         """"
         Calculates the (approximate) optimal pumping scenario for each pump
         and updates statistics on how it is doing
         """
-        for pump, model_input, actual_level in zip(self.pumps.values(), model_inputs, actual_levels):
-            pump.pre_step(model_input, actual_levels)
+        for pump, model_input, actual_level in pump_step_data.items():
+            pump.pre_step(model_input, actual_level)
 
         bounds = {}
         for pump in self.pumps.values():

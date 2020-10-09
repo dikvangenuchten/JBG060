@@ -12,7 +12,18 @@ def load_model(pump_name) -> tf.keras.Model:
     :return: the keras model trained for this pumping stations
     """
 
-    # TODO load model trained for this pump
+    # TODO check if there is a trained model for this pump
+    # TODO load model trained for this pump or train model for this pump
+
+
+def train_model(pump_name) -> tf.keras.Model:
+    """
+    Trains a model based on the pump name
+    """
+
+    # TODO load data for pump
+    # TODO Train model on data
+    # TODO Test model on train data
 
 
 def initiate_pump(pump_name, t) -> Pump:
@@ -53,4 +64,7 @@ if __name__ == '__main__':
     sewage_system = SewageSystem(pumps)
 
     for time_step in range(start=start_t, stop=end_t, step=1):
-        pass
+        step_data = {pump_name: prepare_data(pump_name, time_step) for pump_name in pump_names}
+        sewage_system.step(step_data)
+
+    # TODO print evaluation of run
