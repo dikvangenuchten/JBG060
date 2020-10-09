@@ -30,15 +30,17 @@ class Pump:
         string = 'level: ' + str(self.level) + ', predicted level: ' + str(self.predicted_level)
         return string
 
-    def pre_step(self, model_input, latest_level):
+    def pre_step(self, model_input):
         """"
-        Updates internal values based on the model_input and the latest measured level
+        Updates internal values needed for deciding what to do this time step
         """
         self.predicted_inflows = self.model.predict(model_input)
-        self.level = latest_level
 
-    def post_step(self, pump_speeds):
-        pass
+    def post_step(self, pump_speeds, actual_inflow):
+        """
+        Updates internal values based on action taken at this time step
+        """
+        self._update_level(pump_speeds[0], incoming_water=actual_inflow)
 
     def simulate_pump_speeds(self, pump_speeds: np.ndarray):
         """
@@ -46,14 +48,16 @@ class Pump:
         :return float: the cost of this pump_speed pattern
         :return [float]: the outflows for each t
         """
+        # Pump is off if speed is below 0.6
+        pump_speeds[pump_speeds < 0.6] = 0
         outflows: np.ndarray = pump_speeds * self.max_pump_flow
         level = self.level
         levels = np.zeros_like(pump_speeds)
         adjusted_outflows = outflows.copy()
         cost = 0
         for i in range(len(pump_speeds)):
-            adjusted_outflows[i] = min(level + self.predicted_inflows, outflows[i])
-            level = level + self.predicted_inflows[i] - adjusted_outflows[i]
+            adjusted_outflows[i] = min(level + self._inflow(i), outflows[i])
+            level = level + self._inflow(i) - adjusted_outflows[i]
             if level >= self.max_capacity * 0.9:
                 cost += (self.overflow_penalty * (self.discount_factor ** i))
             levels[i] = level
@@ -61,7 +65,7 @@ class Pump:
 
         return cost, adjusted_outflows
 
-    def update_level(self, pump_level, incoming_water):
+    def _update_level(self, pump_level, incoming_water):
         """
         updates level by calculating the amount of water pumped away and the incoming water
         """
@@ -82,8 +86,11 @@ class Pump:
             self.pump_mode = "Off"
             self.pump_changes += 1
 
-    def predict_level(self, pump_level):
-        """predicts the level for the next hours"""
+    def _predict_level(self, pump_level):
+        """
+        DEPRECATED
+        predicts the level for the next hours
+        """
 
         predicted_incoming_water = self.model()
         self.predicted_level = self.level + predicted_incoming_water - pump_level * self.max_pump_flow
@@ -94,7 +101,7 @@ class Pump:
         if self.predicted_level < self.min_capacity:
             self.predicted_level = self.min_capacity
 
-    def inflow(self, delta_t):
+    def _inflow(self, delta_t):
         """"
         :returns the predicted inflow at t
         """
@@ -103,28 +110,30 @@ class Pump:
 
     def max_predicted_level(self, delta_t):
         """"
+        DEPRECATED
         Calculates the maximum level this pump is expected to have at t + delta_t, assuming no pumping
         """
         if delta_t <= 0:
             return self.level
         else:
-            return self.max_predicted_level(delta_t - 1) + self.inflow(delta_t)
+            return self.max_predicted_level(delta_t - 1) + self._inflow(delta_t)
 
     def min_predicted_level(self, delta_t):
         """"
+        DEPRECATED
         Calculates the minimum level this pump can have at to have at t + delta_t, assuming max pumping
         """
         if delta_t <= 0:
             return self.level
         else:
             return max(self.min_capacity,
-                       self.min_predicted_level(delta_t - 1) + self.inflow(delta_t) - self.max_pump_flow)
+                       self.min_predicted_level(delta_t - 1) + self._inflow(delta_t) - self.max_pump_flow)
 
     def get_bucket(self):
-        """returns the level of the data rounded to the closed 10"""
-
-        bucket = math.ceil(self.level / self.max_capacity * 10) * 10
-        return bucket
+        """
+        returns the level of the data rounded to the closed 10
+        """
+        return self.to_bucket(self.level)
 
     def to_bucket(self, level):
         """"

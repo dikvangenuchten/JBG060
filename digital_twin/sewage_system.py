@@ -1,6 +1,5 @@
 import numpy as np
 from digital_twin.pump_class import Pump
-from scipy.optimize import minimize
 import bayes_opt
 
 
@@ -16,12 +15,16 @@ class SewageSystem:
         self.total_outflow_handled = 0
 
     def step(self, model_inputs: [np.ndarray], actual_levels: [np.ndarray]):
+        """"
+        Calculates the (approximate) optimal pumping scenario for each pump
+        and updates statistics on how it is doing
+        """
         for pump, model_input, actual_level in zip(self.pumps.values(), model_inputs, actual_levels):
             pump.pre_step(model_input, actual_levels)
 
         bounds = {}
         for pump in self.pumps.values():
-            pump_bounds = {pump.name + "_" + str(i): (0.6, 1) for i in range(self.look_ahead)}
+            pump_bounds = {pump.name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
             bounds.update(pump_bounds)
 
         optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
@@ -32,15 +35,19 @@ class SewageSystem:
         optimizer.maximize()
         optimal_packed_dict = optimizer.max()
         optimal_pumps_speeds = self.dict_unpacker(optimal_packed_dict)
-        
+
         total_step_outflow = 0
         for pump, optimal_speeds in optimal_pumps_speeds.items():
             total_step_outflow += self.pumps[pump].post_step(optimal_speeds)
-        
+
         self.total_outflow_handled += total_step_outflow
-        
 
     def optimization_func(self, packed_dict):
+        """
+        Cost function to optimize for the bayesian optimization
+        :param packed_dict:
+        :return: float the penalty occuered from this pumping scenario
+        """
         pump_speeds = self.dict_unpacker(packed_dict)
         pump_cost = 0
         all_flows = np.zeros(self.look_ahead)
@@ -57,6 +64,9 @@ class SewageSystem:
         return -(pump_cost + smooth_cost)
 
     def dict_unpacker(self, packed_dict: {str: float}):
+        """"
+        unpacks the dict needed in the bayesian optimization function to a useable dict
+        """
         unpacked_dict = {}
         for key, value in packed_dict.items():
             pump_name, t = key.split(sep="_")
@@ -65,21 +75,9 @@ class SewageSystem:
             unpacked_dict[pump_name] = speeds
         return unpacked_dict
 
-    def get_speeds(self, delta):
-        min_flows = []
-        min_pump_speeds = []
-        max_flows = []
-        max_pump_speeds = []
-        for t in delta:
-            min_flow, min_pump_speed, max_flow, max_pump_speed = self.get_min_max_flow(t)
-            min_flows.append(min_flow)
-            min_pump_speeds.append(min_pump_speed)
-            max_flows.append(max_flow)
-            max_pump_speeds.append(max_pump_speed)
-        # TODO minimize derivative over time, with hard the limitation of staying between min and max flow
-
     def get_min_max_flow(self, t):
         """"
+        DEPRECATED
         Get the predicted flow and pumping speeds at time step t, where currently is always t=0
         """
         buckets = {pump.name: pump.get_bucket(t) for pump in self.pumps.values()}
@@ -102,6 +100,10 @@ class SewageSystem:
         return min_flow, min_pump_speeds, max_flow, max_pump_speeds
 
     def get_levels(self, t):
+        """"
+        DEPRECATED
+        :return the bucket level of each pump
+        """
         return {pump.name: pump.get_bucket(t) for pump in self.pumps.values()}
 
 
