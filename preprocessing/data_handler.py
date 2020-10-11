@@ -9,6 +9,7 @@ class DataHandler:
                  predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
                  flow_path: str = os.path.join('processed', 'helftheuvel_1hour.csv')):
         self.actual_rainfall_path = actual_rainfall_path
+        self.actual_rainfall_data = None
 
         self.predicted_rainfall_path = predicted_rainfall_path
         self.predicted_rainfall_data = None
@@ -21,7 +22,7 @@ class DataHandler:
         self.x_shape = None
         self.y_shape = None
 
-    def load_data(self, batch_size=64):
+    def load_data(self):
         """"
         Loads the data into memory
         """
@@ -50,7 +51,7 @@ class DataHandler:
             self.y_shape = (None, *np.shape(y))
 
     def validation_iterator(self, start, end):
-        return self.iterator(np.linspace(start=start, stop=end, num=end-start, dtype=np.int), batch_size=1)
+        return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)
 
     def train_iterator(self, batch_size):
         return self.iterator(range(48, round(0.8 * len(self.flow_df))), batch_size=batch_size)
