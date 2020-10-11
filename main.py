@@ -15,10 +15,9 @@ model_dir = "saved_model"
 epochs = 3
 batch_size = 64
 loss_weights = {i: x for i, x in enumerate(np.linspace(start=1, stop=0.5, num=48, endpoint=False, dtype=int))}
-print(loss_weights)
 
-
-def train(epochs: int, data_handler: DataHandler, model: tf.keras.Model, models_dir: str, model_name: str = "unnamed"):
+def train(epochs: int, data_handler: DataHandler, model: tf.keras.Model, models_dir: str, model_name: str = "unnamed",
+          batch_size: int = 64, loss_weights: dict = None):
     for epoch in range(epochs):
         print(f"Starting Epoch {epoch}")
         train_data = data_handler.train_iterator(batch_size=batch_size)
@@ -45,7 +44,7 @@ if __name__ == '__main__':
         concatenate_and_generate_overview.search_and_concat(data_path)
 
     data_handler = DataHandler(data_path)
-    data_handler.load_data(batch_size=64)
+    data_handler.load_data()
 
     model = DiffPredictor("helftheuvel", input_shape=data_handler.x_shape)
     model.build(data_handler.x_shape)

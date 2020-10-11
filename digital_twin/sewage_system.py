@@ -1,5 +1,5 @@
 import numpy as np
-from digital_twin.pump_class import Pump
+from digital_twin.pump import Pump
 import bayes_opt
 
 
