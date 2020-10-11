@@ -12,6 +12,10 @@ def search_and_unzip(location):
             print(f'Found zip: {file_path}')
             with zipfile.ZipFile(file_path, 'r') as zipObj:
                 zipObj.extractall(location)
+                # os.remove(location + item)
 
+    list_dir = os.listdir(location)
+    for item in list_dir:
+        file_path = os.path.join(location, item)
         if os.path.isdir(file_path):
             search_and_unzip(f'{file_path}/')
