@@ -1,13 +1,14 @@
 import os
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 
 class DataHandler:
     def __init__(self, pump_station_name: str,
                  actual_rainfall_path: str = "processed/data_rainfall_rain_timeseries_Download__.csv",
                  predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
-                 flow_path: str = os.path.join('processed', 'helftheuvel_1hour.csv')):
+                 in_flow_path: str = os.path.join('processed', 'pump_in_flow_appr_Helftheuvel.csv')):
         self.actual_rainfall_path = actual_rainfall_path
         self.actual_rainfall_data = None
 
@@ -15,9 +16,9 @@ class DataHandler:
         self.predicted_rainfall_data = None
         self.pump_station_name = pump_station_name
 
-        self.flow_path = flow_path
-        self.flow_df = None
-        self.diff = None
+        self.in_flow_path = in_flow_path
+        self.inflow = None
+        self.level = None
 
         self.x_shape = None
         self.y_shape = None
@@ -26,16 +27,22 @@ class DataHandler:
         """"
         Loads the data into memory
         """
-        if self.flow_path is not None:
-            self.flow_df = pd.read_csv(self.flow_path, index_col=0)
+        if self.in_flow_path is not None:
+            in_flow_df = pd.read_csv(self.in_flow_path, index_col=0, parse_dates=True)
             # Get hour of day as integer
-            self.flow_df["time_hour"] = pd.to_datetime(self.flow_df.Date).dt.hour.astype(float)
-            self.diff = self.flow_df.helftheuvelweg.diff()
-            # Drop date
-            self.flow_df.drop(columns="Date", inplace=True)
+
+            in_flow_df["flow_in"].replace(np.nan, 0, inplace=True)
+
+            # in_flow_df["time_hour"] = pd.to_datetime(in_flow_df.index).hour.astype(int)
+            self.inflow = in_flow_df.resample("H").flow_in.sum()
+            # TODO fix naming in in_flow_df
+            # TODO Change level to volume
+            self.level = in_flow_df.resample("H")['003: Helftheuvelweg Niveau (cm)'].max()
 
         if self.actual_rainfall_path is not None:
             self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
+            print(self.actual_rainfall_data.head())
+            print(self.actual_rainfall_data.columns)
 
         if self.predicted_rainfall_path is not None:
             self.predicted_rainfall_data = pd.read_csv(self.predicted_rainfall_path)
@@ -43,6 +50,7 @@ class DataHandler:
                 self.predicted_rainfall_data.Time
             ).dt.hour.astype(float)
             self.predicted_rainfall_data = self.predicted_rainfall_data[self.predicted_rainfall_data.columns[3:7]]
+            self.predicted_rainfall_data["time"] = self.predicted_rainfall_data.index % 24
 
         if self.x_shape is None:
             x, y = self.__getitem__(48)
@@ -54,10 +62,10 @@ class DataHandler:
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)
 
     def train_iterator(self, batch_size):
-        return self.iterator(range(48, round(0.8 * len(self.flow_df))), batch_size=batch_size)
+        return self.iterator(range(48, round(0.8 * len(self.inflow))), batch_size=batch_size)
 
     def test_iterator(self, batch_size):
-        return self.iterator(range(round(0.9 * len(self.flow_df)), len(self.flow_df) - 48), batch_size=batch_size)
+        return self.iterator(range(round(0.9 * len(self.inflow)), len(self.inflow) - 48), batch_size=batch_size)
 
     def iterator(self, dates, batch_size):
         """
@@ -74,7 +82,9 @@ class DataHandler:
                 x, y = self.__getitem__(date)
                 x_train.append(x)
                 y_true.append(y)
+
             x_train, y_true = np.array(x_train), np.array(y_true)
+
             yield x_train, y_true
 
     def __getitem__(self, index: int):
@@ -84,17 +94,37 @@ class DataHandler:
         with e.g. the actual rain of hours 0 to 48
         and the predicted rain of hours 48 to 96
         """
+        return self.get_x_data(index), self.get_y_data(index)
 
-        x_data_flow = np.array(self._get_flow(index))
-        x_data_rain = np.array(self._get_rainfall_prediction(index))
-        x_data = np.concatenate([x_data_flow, x_data_rain], axis=1)
-        y_data = np.array(self._get_diff(index))
-
+    def get_x_data(self, t):
+        """
+        Returns the x data for time step t
+        :param t: the time step for which the data is requested
+        :return:
+        """
+        x_data = np.array(self._get_rainfall_prediction(t))
         if np.any(np.isnan(x_data)):
             np.nan_to_num(x_data, copy=False)
+        return x_data
+
+    def get_y_data(self, t):
+        """
+        Returns the y data for time step t
+        :param t: the time step for which the data is requested
+        :return:
+        """
+        y_data = np.array(self._get_diff(t))
         if np.any(np.isnan(y_data)):
             np.nan_to_num(y_data, copy=False)
-        return x_data, y_data
+        return y_data
+
+    def get_level(self, t):
+        """
+        Returns the level of the pump at time step t
+        :param t:
+        :return:
+        """
+        return self.level[t]
 
     def _get_diff(self, t, delta=48):
         """"
@@ -102,16 +132,7 @@ class DataHandler:
         diff_t = level_t - level_t-1
         with diff_0 = 0
         """
-        return self.diff[t:t + delta]
-
-    def _get_flow(self, t, delta=48):
-        """
-        Returns the flow between t-delta and t were t=0 is the beginning of the dataset, being 2018-01-01 00:00
-        :param t: int, is the index from which point we want to get the data from
-        :param delta: int, the amount of rows after t we want to get the data from
-        :raise IndexOutOfRange error when delta is bigger then t
-        """
-        return self.flow_df[t - delta:t]
+        return self.inflow[t:t + delta]
 
     def _get_rainfall_prediction(self, t, delta=48):
         """"

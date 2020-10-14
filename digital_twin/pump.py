@@ -34,13 +34,13 @@ class Pump:
         """"
         Updates internal values needed for deciding what to do this time step
         """
-        self.predicted_inflows = self.model.predict(model_input)
+        self.predicted_inflows = self.model.predict(np.expand_dims(model_input, 0))[0]
 
     def post_step(self, pump_speeds, actual_inflow):
         """
         Updates internal values based on action taken at this time step
         """
-        self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+        return self._update_level(pump_speeds[0], incoming_water=actual_inflow)
 
     def simulate_pump_speeds(self, pump_speeds: np.ndarray):
         """
@@ -68,9 +68,11 @@ class Pump:
     def _update_level(self, pump_level, incoming_water):
         """
         updates level by calculating the amount of water pumped away and the incoming water
+        :returns the amount of water pumped out
         """
 
-        self.level = self.level + incoming_water - pump_level * self.max_pump_flow
+        outflow = min(self.level + incoming_water - self.min_capacity, pump_level * self.max_pump_flow)
+        self.level = self.level + incoming_water - outflow
 
         if self.level > self.max_capacity:
             self.level = self.max_capacity
@@ -85,6 +87,8 @@ class Pump:
         if self.pump_mode == "On" and pump_level == 0:
             self.pump_mode = "Off"
             self.pump_changes += 1
+
+        return outflow
 
     def _predict_level(self, pump_level):
         """

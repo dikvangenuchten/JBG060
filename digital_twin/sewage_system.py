@@ -5,7 +5,7 @@ import bayes_opt
 
 class SewageSystem:
     def __init__(self, pumps):
-        self.pumps: {str: Pump} = {pump.name: pump for pump in pumps}
+        self.pumps: {str: Pump} = {pump.pump_name: pump for pump in pumps}
         self.flow = 0
         self.max_flow_deviation = 0.1
         self.max_level = 7
@@ -13,36 +13,38 @@ class SewageSystem:
         self.look_ahead = 24
         self.discount_factor = 0.90
         self.total_outflow_handled = 0
+        self.epsilon = 1e-8
 
-    def step(self, pump_step_data: dict):
+        self.bounds = {}
+        for pump_name in self.pumps.keys():
+            pump_bounds = {pump_name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
+            self.bounds.update(pump_bounds)
+
+    def step(self, model_data: dict, inflow_data: dict):
         """"
         Calculates the (approximate) optimal pumping scenario for each pump
         and updates statistics on how it is doing
         """
-        for pump, model_input, actual_level in pump_step_data.items():
-            pump.pre_step(model_input, actual_level)
-
-        bounds = {}
-        for pump in self.pumps.values():
-            pump_bounds = {pump.name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
-            bounds.update(pump_bounds)
+        for pump_name, model_input in model_data.items():
+            self.pumps.get(pump_name).pre_step(model_input)
 
         optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
             f=self.optimization_func,
-            pbounds=bounds
+            pbounds=self.bounds,
         )
 
         optimizer.maximize()
-        optimal_packed_dict = optimizer.max()
-        optimal_pumps_speeds = self.dict_unpacker(optimal_packed_dict)
+        optimal_packed_dict = optimizer.max
+        optimal_params = optimal_packed_dict["params"]
+        optimal_pumps_speeds = self.dict_unpacker(optimal_params)
 
         total_step_outflow = 0
-        for pump, optimal_speeds in optimal_pumps_speeds.items():
-            total_step_outflow += self.pumps[pump].post_step(optimal_speeds)
+        for pump_name, optimal_speeds in optimal_pumps_speeds.items():
+            total_step_outflow += self.pumps[pump_name].post_step(optimal_speeds, inflow_data.get(pump_name))
 
         self.total_outflow_handled += total_step_outflow
 
-    def optimization_func(self, packed_dict):
+    def optimization_func(self, **packed_dict):
         """
         Cost function to optimize for the bayesian optimization
         :param packed_dict:
@@ -57,9 +59,9 @@ class SewageSystem:
             pump_cost += cost
 
         smooth_cost = 0
-        perc_diffs = np.diff(all_flows) / all_flows[:-1] * 100
+        perc_diffs = np.diff(all_flows) / (all_flows[:-1] + self.epsilon) * 100
         for i, perc_diff in enumerate(perc_diffs):
-            smooth_cost += perc_diffs * self.discount_factor ** i
+            smooth_cost += abs(perc_diff) * self.discount_factor ** i
 
         return -(pump_cost + smooth_cost)
 
@@ -71,7 +73,7 @@ class SewageSystem:
         for key, value in packed_dict.items():
             pump_name, t = key.split(sep="_")
             speeds = unpacked_dict.get(pump_name, np.zeros(shape=self.look_ahead))
-            speeds[t] = value
+            speeds[int(t)] = value
             unpacked_dict[pump_name] = speeds
         return unpacked_dict
 
