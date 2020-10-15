@@ -12,7 +12,9 @@ class SewageSystem:
         self.target_level = 1
         self.look_ahead = 24
         self.discount_factor = 0.90
-        self.total_outflow_handled = 0
+        self.total_inflow = 0
+        self.total_outflow = 0
+        self.total_overflows = 0
         self.epsilon = 1e-8
 
         self.bounds = {}
@@ -31,6 +33,7 @@ class SewageSystem:
         optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
             f=self.optimization_func,
             pbounds=self.bounds,
+            verbose=0
         )
 
         optimizer.maximize()
@@ -38,11 +41,25 @@ class SewageSystem:
         optimal_params = optimal_packed_dict["params"]
         optimal_pumps_speeds = self.dict_unpacker(optimal_params)
 
-        total_step_outflow = 0
-        for pump_name, optimal_speeds in optimal_pumps_speeds.items():
-            total_step_outflow += self.pumps[pump_name].post_step(optimal_speeds, inflow_data.get(pump_name))
+        step_stats = {pump_name: self.pumps[pump_name].post_step(optimal_speeds, inflow_data.get(pump_name))
+                      for pump_name, optimal_speeds in optimal_pumps_speeds.items()}
 
-        self.total_outflow_handled += total_step_outflow
+        total_step_inflow = 0
+        total_step_outflow = 0
+        total_step_level = 0
+        total_step_overflows = 0
+        for inflow, outflow, level, overflow in step_stats.values():
+            total_step_inflow += inflow
+            total_step_outflow += outflow
+            total_step_level += level
+            total_step_overflows += overflow
+
+        print(f"Lowest Cost Found: {optimal_packed_dict.get('target'): 10f}\n"
+              f"Total Inflow: {total_step_inflow}, Total Outflow: {total_step_outflow}\n"
+              f"Total Level: {total_step_level}, Total Overflows: {total_step_overflows}")
+        self.total_outflow += total_step_outflow
+        self.total_overflows += total_step_overflows
+        return optimal_packed_dict.get('target'), total_step_outflow
 
     def optimization_func(self, **packed_dict):
         """

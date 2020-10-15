@@ -41,8 +41,6 @@ class DataHandler:
 
         if self.actual_rainfall_path is not None:
             self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
-            print(self.actual_rainfall_data.head())
-            print(self.actual_rainfall_data.columns)
 
         if self.predicted_rainfall_path is not None:
             self.predicted_rainfall_data = pd.read_csv(self.predicted_rainfall_path)

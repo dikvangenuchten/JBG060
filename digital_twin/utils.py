@@ -24,10 +24,10 @@ def initiate_pump(models_dir: str, pump_name: str, t: int) -> Pump:
     # TODO get pump statistics (max/min capacity, max flow)
     # TODO get pump level at t
     return Pump(name=pump_name,
-                min_capacity=0,
-                max_capacity=10000,
-                max_pump_flow=2000,
-                start_level=0,
+                min_capacity=10_000,
+                max_capacity=1_000_000,
+                max_pump_flow=60000,
+                start_level=10_000,
                 model=pump_model, )
 
 

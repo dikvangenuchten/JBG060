@@ -40,7 +40,8 @@ class Pump:
         """
         Updates internal values based on action taken at this time step
         """
-        return self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+        actual_outflow, overflow = self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+        return actual_inflow, actual_outflow, self.level, overflow
 
     def simulate_pump_speeds(self, pump_speeds: np.ndarray):
         """
@@ -74,7 +75,7 @@ class Pump:
         outflow = min(self.level + incoming_water - self.min_capacity, pump_level * self.max_pump_flow)
         self.level = self.level + incoming_water - outflow
 
-        if self.level > self.max_capacity:
+        if overflow := self.level > self.max_capacity:
             self.level = self.max_capacity
             self.flood += 1
         if self.level < self.min_capacity:
@@ -88,7 +89,7 @@ class Pump:
             self.pump_mode = "Off"
             self.pump_changes += 1
 
-        return outflow
+        return outflow, overflow
 
     def _predict_level(self, pump_level):
         """
