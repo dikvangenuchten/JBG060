@@ -25,7 +25,10 @@ class Pump:
         self.ahead_planning: int = 24
         self.discount_factor = 0.9
         self.overflow_penalty = 10
-
+        self.actual_inflow: float = np.nan
+        self.actual_outflow: float = np.nan
+        
+        
     def __str__(self):
         """
         String representation of a model
@@ -45,6 +48,9 @@ class Pump:
         Updates internal values based on action taken at this time step
         """
         actual_outflow, overflow = self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+        
+        self.actual_inflow = actual_inflow
+        self.actual_outflow = actual_outflow
         return actual_inflow, actual_outflow, self.level, overflow
 
     def simulate_pump_speeds(self, pump_speeds: np.ndarray):
@@ -167,12 +173,11 @@ class Pump:
         """
         filename = os.path.join(directory, self.pump_name)
         
-        
         #writes column names if file does not exist yet
         if not os.path.isfile(filename):
             with open(f'{filename}.csv', 'a',newline='') as writable_file:
-                csv.writer(writable_file).writerow("Time","Level","Predicted Level")
+                csv.writer(writable_file).writerow("Time","Level","Predicted Level","Actual Inflow","Actual Outflow")
             
         #append a row whenever function is called
         with open(f'{filename}.csv', 'a',newline='') as writable_file:
-            csv.writer(writable_file).writerow([t,self.level,self.predicted_level])    
+            csv.writer(writable_file).writerow([t,self.level,self.predicted_level,self.actual_inflow,self.actual_outflow])    
