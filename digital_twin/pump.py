@@ -1,4 +1,6 @@
 import math
+import os
+
 import numpy as np
 import tensorflow as tf
 
@@ -25,8 +27,10 @@ class Pump:
         self.overflow_penalty = 10
 
     def __str__(self):
-        """prints the level of a model and the predicted level"""
-
+        """
+        String representation of a model
+        prints the level of a model and the predicted level
+        """
         string = 'level: ' + str(self.level) + ', predicted level: ' + str(self.predicted_level)
         return string
 
@@ -156,3 +160,10 @@ class Pump:
         if pumped > (self.level - self.min_capacity):
             pumped = self.level - self.min_capacity
         return pumped
+
+    def save_data(self, t, directory):
+        """
+        save this classes data to a file
+        """
+        filename = os.path.join(directory, self.pump_name)
+        # TODO save necessary data to disk

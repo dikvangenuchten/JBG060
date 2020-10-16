@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from digital_twin.pump import Pump
 import bayes_opt
@@ -124,6 +125,17 @@ class SewageSystem:
         :return the bucket level of each pump
         """
         return {pump.name: pump.get_bucket(t) for pump in self.pumps.values()}
+
+    def save_data(self, t, directory):
+        """
+        save this classes data to a file
+        """
+        filename = os.path.join(directory, "complete_sewage_system")
+        # TODO save necessary data to disk
+
+        # Also call each pump
+        for pump in self.pumps.values():
+            pump.save_data(t, directory)
 
 
 if __name__ == '__main__':
