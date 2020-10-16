@@ -166,4 +166,13 @@ class Pump:
         save this classes data to a file
         """
         filename = os.path.join(directory, self.pump_name)
-        # TODO save necessary data to disk
+        
+        
+        #writes column names if file does not exist yet
+        if not os.path.isfile(filename):
+            with open(f'{filename}.csv', 'a',newline='') as writable_file:
+                csv.writer(writable_file).writerow("Time","Level","Predicted Level")
+            
+        #append a row whenever function is called
+        with open(f'{filename}.csv', 'a',newline='') as writable_file:
+            csv.writer(writable_file).writerow([t,self.level,self.predicted_level])    
