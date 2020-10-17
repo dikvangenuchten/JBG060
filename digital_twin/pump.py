@@ -10,7 +10,9 @@ class Pump:
     """Class for pumps"""
 
     def __init__(self, name, min_capacity, max_capacity, max_pump_flow, start_level, model):
-        """A pump needs to have a max capacity, max pump flow and a starting level and a model"""
+        """
+        A pump needs to have a max capacity, max pump flow and a starting level and a model
+        """
 
         self.pump_name = name
         self.min_capacity: float = min_capacity
@@ -174,12 +176,15 @@ class Pump:
         filename = os.path.join(directory, self.pump_name)
 
         # writes column names if file does not exist yet
-        if not os.path.isfile(filename):
+        if not os.path.exists(filename):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
-                csv.writer(writable_file).writerow(["Time", "Level", "Predicted Level", "Actual Inflow",
-                                                    "Actual Outflow"])
+                csv.writer(writable_file).writerow(
+                    ["Time", "Level", "Predicted Level", "Actual Inflow", "Actual Outflow"]
+                )
 
         # append a row whenever function is called
         with open(f'{filename}.csv', 'a', newline='') as writable_file:
             csv.writer(writable_file).writerow(
-                [t, self.level, self.predicted_level, self.actual_inflow, self.actual_outflow])
+                [t, self.level, self.predicted_level, self.actual_inflow, self.actual_outflow]
+            )

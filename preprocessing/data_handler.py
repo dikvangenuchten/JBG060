@@ -37,7 +37,9 @@ class DataHandler:
             self.inflow = in_flow_df.resample("H").flow_in.sum()
             # TODO fix naming in in_flow_df
             # TODO Change level to volume
-            self.level = in_flow_df.resample("H")['003: Helftheuvelweg Niveau (cm)'].max()
+            self.max_level = in_flow_df.iloc[:, 1].max()
+            self.min_level = in_flow_df.iloc[:, 1].min()
+            self.level = in_flow_df.resample("H").iloc[:, 1].max()
 
         if self.actual_rainfall_path is not None:
             self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
@@ -55,6 +57,14 @@ class DataHandler:
             # Shape is (batch_size, time, features)
             self.x_shape = (None, *np.shape(x))
             self.y_shape = (None, *np.shape(y))
+
+    def get_initiate_data(self, t):
+        level_at_t = self.level[t]
+        min_level = self.level.min()
+        max_level = self.level.max()
+
+    def level_to_volume(self, level):
+        pass
 
     def validation_iterator(self, start, end):
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)

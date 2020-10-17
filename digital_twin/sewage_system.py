@@ -1,4 +1,5 @@
 import os
+import csv
 import numpy as np
 from digital_twin.pump import Pump
 import bayes_opt
@@ -131,20 +132,21 @@ class SewageSystem:
         save this classes data to a file
         """
         filename = os.path.join(directory, "complete_sewage_system")
-        
-        #writes column names if file does not exist yet
-        if not os.path.isfile(filename):
-            with open(f'{filename}.csv', 'a',newline='') as writable_file:
-                csv.writer(writable_file).writerow("Time","Total Inflow","Total Outflow")
-            
-        #append a row whenever function is called
-        with open(f'{filename}.csv', 'a',newline='') as writable_file:
-            csv.writer(writable_file).writerow([t,self.total_inflow,self.total_outflow])    
 
-        # Also call each pump
+        # writes column names if file does not exist yet
+        if not os.path.exists(filename):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            with open(f'{filename}.csv', 'a', newline='') as writable_file:
+                csv.writer(writable_file).writerow(["Time", "Total Inflow", "Total Outflow"])
+
+        # append a row whenever function is called
+        with open(f'{filename}.csv', 'a', newline='') as writable_file:
+            csv.writer(writable_file).writerow([t, self.total_inflow, self.total_outflow])
+
+            # Also call each pump
         for pump in self.pumps.values():
             pump.save_data(t, directory)
 
-        
+
 if __name__ == '__main__':
     pass
