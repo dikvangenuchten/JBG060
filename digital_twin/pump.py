@@ -1,6 +1,9 @@
 import math
+import os
+
 import numpy as np
 import tensorflow as tf
+import csv
 
 
 class Pump:
@@ -23,10 +26,14 @@ class Pump:
         self.ahead_planning: int = 24
         self.discount_factor = 0.9
         self.overflow_penalty = 10
+        self.actual_inflow: float = np.nan
+        self.actual_outflow: float = np.nan
 
     def __str__(self):
-        """prints the level of a model and the predicted level"""
-
+        """
+        String representation of a model
+        prints the level of a model and the predicted level
+        """
         string = 'level: ' + str(self.level) + ', predicted level: ' + str(self.predicted_level)
         return string
 
@@ -34,13 +41,17 @@ class Pump:
         """"
         Updates internal values needed for deciding what to do this time step
         """
-        self.predicted_inflows = self.model.predict(model_input)
+        self.predicted_inflows = self.model.predict(np.expand_dims(model_input, 0))[0]
 
     def post_step(self, pump_speeds, actual_inflow):
         """
         Updates internal values based on action taken at this time step
         """
-        self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+        actual_outflow, overflow = self._update_level(pump_speeds[0], incoming_water=actual_inflow)
+
+        self.actual_inflow = actual_inflow
+        self.actual_outflow = actual_outflow
+        return actual_inflow, actual_outflow, self.level, overflow
 
     def simulate_pump_speeds(self, pump_speeds: np.ndarray):
         """
@@ -68,11 +79,13 @@ class Pump:
     def _update_level(self, pump_level, incoming_water):
         """
         updates level by calculating the amount of water pumped away and the incoming water
+        :returns the amount of water pumped out
         """
 
-        self.level = self.level + incoming_water - pump_level * self.max_pump_flow
+        outflow = min(self.level + incoming_water - self.min_capacity, pump_level * self.max_pump_flow)
+        self.level = self.level + incoming_water - outflow
 
-        if self.level > self.max_capacity:
+        if overflow := self.level > self.max_capacity:
             self.level = self.max_capacity
             self.flood += 1
         if self.level < self.min_capacity:
@@ -85,6 +98,8 @@ class Pump:
         if self.pump_mode == "On" and pump_level == 0:
             self.pump_mode = "Off"
             self.pump_changes += 1
+
+        return outflow, overflow
 
     def _predict_level(self, pump_level):
         """
@@ -151,3 +166,20 @@ class Pump:
         if pumped > (self.level - self.min_capacity):
             pumped = self.level - self.min_capacity
         return pumped
+
+    def save_data(self, t, directory):
+        """
+        save this classes data to a file
+        """
+        filename = os.path.join(directory, self.pump_name)
+
+        # writes column names if file does not exist yet
+        if not os.path.isfile(filename):
+            with open(f'{filename}.csv', 'a', newline='') as writable_file:
+                csv.writer(writable_file).writerow(["Time", "Level", "Predicted Level", "Actual Inflow",
+                                                    "Actual Outflow"])
+
+        # append a row whenever function is called
+        with open(f'{filename}.csv', 'a', newline='') as writable_file:
+            csv.writer(writable_file).writerow(
+                [t, self.level, self.predicted_level, self.actual_inflow, self.actual_outflow])
