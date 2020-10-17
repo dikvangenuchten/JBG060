@@ -100,3 +100,29 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
         print(f"Finished evaluation on Epoch {epoch}")
         model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
     model.save(os.path.join(models_dir, model_name, "trained_model"))
+
+
+def dry_wet_days(df):
+    """
+    Makes df for dry and wet days, need to make rainbuckets first
+    """
+
+    dry_days = df[df['daily_rain_none'] == 1]
+    wet_days = df[df['daily_rain_none'] == 0]
+
+    return dry_days, wet_days
+
+
+def t_calculator(df, time_col_name, start_time: str = '2018-01-01 00:00:00') -> None:
+    """
+    Adds a column to the dataframe df with the difference in hours to the given start time and the time of an item
+    in the df
+    """
+    from datetime import datetime
+
+    time_list = df[time_col_name].values.tolist()
+    datetime_list = []
+    for date in time_list:
+        datetime_list.append(int((datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+                                  - datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600))
+    df['t'] = datetime_list
