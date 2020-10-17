@@ -24,6 +24,37 @@ class SewageSystem:
             pump_bounds = {pump_name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
             self.bounds.update(pump_bounds)
 
+    def dumb_step(self, model_data: dict, inflow_data: dict):
+        """
+        Simulates the current system
+        """
+        for pump_name, model_input in model_data.items():
+            self.pumps.get(pump_name).pre_step(model_input)
+
+        total_step_inflow = 0
+        total_step_outflow = 0
+        total_step_level = 0
+        total_step_overflows = 0
+        for pump_name, inflow in inflow_data.items():
+            pump = self.pumps[pump_name]
+            mode = pump.pump_mode
+            if (bucket := pump.get_bucket()) > 4:
+                mode = "On"
+            elif bucket < 1:
+                mode = "Off"
+
+            if mode == "On":
+                inflow, outflow, level, overflow = pump.post_step(pump_speeds=[1], actual_inflow=inflow)
+            else:
+                inflow, outflow, level, overflow = pump.post_step(pump_speeds=[0], actual_inflow=inflow)
+            total_step_inflow += inflow
+            total_step_outflow += outflow
+            total_step_level += level
+            total_step_overflows += overflow
+
+        self.total_outflow = total_step_outflow
+        self.total_inflow = total_step_inflow
+
     def step(self, model_data: dict, inflow_data: dict):
         """"
         Calculates the (approximate) optimal pumping scenario for each pump
@@ -134,7 +165,7 @@ class SewageSystem:
         filename = os.path.join(directory, "complete_sewage_system")
 
         # writes column names if file does not exist yet
-        if not os.path.exists(filename):
+        if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(["Time", "Total Inflow", "Total Outflow"])

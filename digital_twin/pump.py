@@ -176,7 +176,7 @@ class Pump:
         filename = os.path.join(directory, self.pump_name)
 
         # writes column names if file does not exist yet
-        if not os.path.exists(filename):
+        if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(

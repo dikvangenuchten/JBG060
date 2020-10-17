@@ -2,7 +2,9 @@
 Various util functions for the digital twin
 """
 import os
+from typing import Tuple
 
+import numpy as np
 import tensorflow as tf
 
 from preprocessing.data_handler import DataHandler
@@ -20,14 +22,14 @@ def initiate_pump(models_dir: str, pump_name: str, data_handler: DataHandler, t:
     :return pump: The initiated Pump
     """
     pump_model = load_model(models_dir=models_dir, pump_name=pump_name)
-    # TODO get pump statistics (max/min capacity, max flow)
-    # TODO get pump level at t
+    min_capacity, max_capacity, start_level, max_pump_flow = data_handler.get_initiate_data(t)
     return Pump(name=pump_name,
-                min_capacity=None,
-                max_capacity=None,
-                max_pump_flow=None,
-                start_level=None,
-                model=pump_model, )
+                min_capacity=min_capacity,
+                max_capacity=max_capacity,
+                max_pump_flow=max_pump_flow,
+                start_level=start_level,
+                model=pump_model
+                )
 
 
 def load_model(models_dir: str, pump_name: str) -> tf.keras.Model:
@@ -51,7 +53,7 @@ def train(models_dir: str, pump_name: str) -> tf.keras.Model:
     """
     data_handler = load_train_data(pump_name=pump_name)
     model = create_model(pump_name=pump_name, data_handler=data_handler)
-    train_model(epochs=10, data_handler=data_handler, model=model, models_dir="trained_models", model_name=pump_name)
+    train_model(epochs=10, data_handler=data_handler, model=model, models_dir=models_dir, model_name=pump_name)
     return model
 
 
@@ -61,10 +63,13 @@ def load_train_data(pump_name) -> DataHandler:
     Requires the data to be in the folder processed/*
     And the csv for this pump to be named: {pump_name}.csv
     """
-    return DataHandler(pump_station_name=pump_name,
-                       actual_rainfall_path=os.path.join("processed", "data_rainfall_rain_timeseries_Download__.csv"),
-                       predicted_rainfall_path=os.path.join("processed", "rainfallpredictionsHourlyV3.csv"),
-                       in_flow_path=os.path.join("processed", pump_name + ".csv"))
+    data_handler = DataHandler(pump_station_name=pump_name,
+                               actual_rainfall_path=os.path.join("processed",
+                                                                 "data_rainfall_rain_timeseries_Download__.csv"),
+                               predicted_rainfall_path=os.path.join("processed", "rainfallpredictionsHourlyV3.csv"),
+                               in_flow_path=os.path.join("processed", f"pump_in_flow_appr_{pump_name}.csv"))
+    data_handler.load_data()
+    return data_handler
 
 
 def create_model(pump_name: str, data_handler: DataHandler) -> tf.keras.Model:
@@ -129,6 +134,7 @@ def t_calculator(df, time_col_name: str, start_time: str = '2018-01-01 00:00:00'
         datetime_list.append(int((datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
                                   - datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600))
     df['t'] = datetime_list
+
 
 def prepare_data(data_handler: DataHandler, t: int) -> Tuple[np.ndarray, float]:
     """"

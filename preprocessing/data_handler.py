@@ -27,19 +27,21 @@ class DataHandler:
         """"
         Loads the data into memory
         """
+        print(self.pump_station_name)
         if self.in_flow_path is not None:
             in_flow_df = pd.read_csv(self.in_flow_path, index_col=0, parse_dates=True)
             # Get hour of day as integer
-
+            print(self.in_flow_path)
             in_flow_df["flow_in"].replace(np.nan, 0, inplace=True)
 
             # in_flow_df["time_hour"] = pd.to_datetime(in_flow_df.index).hour.astype(int)
             self.inflow = in_flow_df.resample("H").flow_in.sum()
             # TODO fix naming in in_flow_df
             # TODO Change level to volume
+            self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample("H").sum())
             self.max_level = in_flow_df.iloc[:, 1].max()
             self.min_level = in_flow_df.iloc[:, 1].min()
-            self.level = in_flow_df.resample("H").iloc[:, 1].max()
+            self.level = in_flow_df.iloc[:, 1].resample("H").max()
 
         if self.actual_rainfall_path is not None:
             self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
@@ -60,8 +62,7 @@ class DataHandler:
 
     def get_initiate_data(self, t):
         level_at_t = self.level[t]
-        min_level = self.level.min()
-        max_level = self.level.max()
+        return self.min_level, self.max_level, self.pump_speed, level_at_t
 
     def level_to_volume(self, level):
         pass
@@ -148,23 +149,17 @@ class DataHandler:
         """
         return self.predicted_rainfall_data[t:t + delta]
 
-    """
-    Gets the mean of the most fastest times a pump has pumped while also removing outliers
-    :param full_df: DataFrame, the pump dataframe with 'level_diff'
-    :param nr_most_pumped: int, the amount of fastest hours we need to find the mean from
-    """
-
-
-def get_mean_fastest_pump_speed(full_df, nr_most_pumped=100):
-    """
+    @staticmethod
+    def get_mean_fastest_pump_speed(full_df, nr_most_pumped=100):
+        """
         Gets the mean of the most fastest times a pump has pumped while also removing outliers
         :param full_df: DataFrame, the pump dataframe with 'level_diff'
         :param nr_most_pumped: int, the amount of fastest hours we need to find the mean from
         """
-    df = full_df.sort_values(by='hstWaarde', ascending=False).iloc[:nr_most_pumped]
+        df = full_df.sort_values(by='hstWaarde', ascending=False).iloc[:nr_most_pumped]
 
-    df['zscore'] = abs((df['hstWaarde'] - df['hstWaarde'].mean()) / df['hstWaarde'].std(ddof=0))
+        df['zscore'] = abs((df['hstWaarde'] - df['hstWaarde'].mean()) / df['hstWaarde'].std(ddof=0))
 
-    df = df[df['zscore'] < 3]
+        df = df[df['zscore'] < 3]
 
-    return abs(df['hstWaarde'].mean())
+        return abs(df['hstWaarde'].mean())
