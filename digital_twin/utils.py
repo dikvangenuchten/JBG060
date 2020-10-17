@@ -10,13 +10,14 @@ from model.diff_predictor import DiffPredictor
 from digital_twin.pump import Pump
 
 
-def initiate_pump(models_dir: str, pump_name: str, t: int) -> Pump:
+def initiate_pump(models_dir: str, pump_name: str, data_handler: DataHandler, t: int) -> Pump:
     """
     Creates a pump, based on the state at time step t
     :param models_dir: The directory where the trained models are saved, or should be saved if none trained yet
     :param pump_name: The name of this pumping station
-    :param t: The timestep from which the level needs to be measured
-    :return pump: The initated Pump
+    :param data_handler: The data handler for this pump
+    :param t: The time step from which the level needs to be measured
+    :return pump: The initiated Pump
     """
     pump_model = load_model(models_dir=models_dir, pump_name=pump_name)
     # TODO get pump statistics (max/min capacity, max flow)
@@ -49,7 +50,7 @@ def train(models_dir: str, pump_name: str) -> tf.keras.Model:
     Trains a model based on the pump name
     """
     data_handler = load_train_data(pump_name=pump_name)
-    model = create_model(data_handler=data_handler)
+    model = create_model(pump_name=pump_name, data_handler=data_handler)
     train_model(epochs=10, data_handler=data_handler, model=model, models_dir="trained_models", model_name=pump_name)
     return model
 
@@ -63,15 +64,15 @@ def load_train_data(pump_name) -> DataHandler:
     return DataHandler(pump_station_name=pump_name,
                        actual_rainfall_path=os.path.join("processed", "data_rainfall_rain_timeseries_Download__.csv"),
                        predicted_rainfall_path=os.path.join("processed", "rainfallpredictionsHourlyV3.csv"),
-                       flow_path=os.path.join("processed", pump_name + ".csv"))
+                       in_flow_path=os.path.join("processed", pump_name + ".csv"))
 
 
-def create_model(data_handler: DataHandler) -> tf.keras.Model:
+def create_model(pump_name: str, data_handler: DataHandler) -> tf.keras.Model:
     """
     Creates a keras model
     :return model: the untrained but compiled model
     """
-    model = DiffPredictor("helftheuvel", input_shape=data_handler.x_shape)
+    model = DiffPredictor(pump_name, input_shape=data_handler.x_shape)
     model.build(data_handler.x_shape)
     model.summary()
     model.compile(
@@ -100,6 +101,7 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
         print(f"Finished evaluation on Epoch {epoch}")
         model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
     model.save(os.path.join(models_dir, model_name, "trained_model"))
+    return model
 
 
 def dry_wet_days(df):
@@ -127,3 +129,12 @@ def t_calculator(df, time_col_name: str, start_time: str = '2018-01-01 00:00:00'
         datetime_list.append(int((datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
                                   - datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600))
     df['t'] = datetime_list
+
+def prepare_data(data_handler: DataHandler, t: int) -> Tuple[np.ndarray, float]:
+    """"
+    Gets the data for a pump at time step t
+    :returns
+        model_input: nd.array, for the input of the model
+        actual_inflow: float, the level at t
+    """
+    return data_handler.get_x_data(t), data_handler.get_y_data(t)

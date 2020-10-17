@@ -12,11 +12,12 @@ end_t = 1000
 data_save_dir = "smart_sewage_sim_1"
 
 if __name__ == '__main__':
-    # Load or create the pumps based on name and save location, and initiate them with the correct starting values
-    pumps = [initiate_pump(models_dir=models_dir, pump_name=pump_name, t=start_t) for pump_name in pump_names]
-
     # Load the data
     data_handlers = {pump_name: load_train_data(pump_name) for pump_name in pump_names}
+
+    # Load or create the pumps based on name and save location, and initiate them with the correct starting values
+    pumps = [initiate_pump(data_handler=data_handlers[pump_name], models_dir=models_dir, pump_name=pump_name, t=start_t)
+             for pump_name in pump_names]
 
     # Initiate the sewage system and assign pumps to it
     sewage_system = SewageSystem(pumps)
