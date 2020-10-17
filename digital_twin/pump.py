@@ -176,8 +176,8 @@ class Pump:
         # writes column names if file does not exist yet
         if not os.path.isfile(filename):
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
-                csv.writer(writable_file).writerow("Time", "Level", "Predicted Level", "Actual Inflow",
-                                                   "Actual Outflow")
+                csv.writer(writable_file).writerow(["Time", "Level", "Predicted Level", "Actual Inflow",
+                                                    "Actual Outflow"])
 
         # append a row whenever function is called
         with open(f'{filename}.csv', 'a', newline='') as writable_file:
