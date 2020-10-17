@@ -115,7 +115,7 @@ def dry_wet_days(df):
 
 def t_calculator(df, time_col_name: str, start_time: str = '2018-01-01 00:00:00'):
     """
-    Adds a column to the dataframe df with the difference in hours to the given start time and the time of an item
+    Adds a column to the data frame df with the difference in hours to the given start time and the time of an item
     in the df
     """
 
