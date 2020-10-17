@@ -137,3 +137,24 @@ class DataHandler:
         Returns the rainfall prediction between t and t+48 were t=0 is the beginning of the dataset, being 2018-01-01
         """
         return self.predicted_rainfall_data[t:t + delta]
+
+    """
+    Gets the mean of the most fastest times a pump has pumped while also removing outliers
+    :param full_df: DataFrame, the pump dataframe with 'level_diff'
+    :param nr_most_pumped: int, the amount of fastest hours we need to find the mean from
+    """
+
+
+def get_mean_fastest_pump_speed(full_df, nr_most_pumped=100):
+    """
+        Gets the mean of the most fastest times a pump has pumped while also removing outliers
+        :param full_df: DataFrame, the pump dataframe with 'level_diff'
+        :param nr_most_pumped: int, the amount of fastest hours we need to find the mean from
+        """
+    df = full_df.sort_values(by='hstWaarde', ascending=False).iloc[:nr_most_pumped]
+
+    df['zscore'] = abs((df['hstWaarde'] - df['hstWaarde'].mean()) / df['hstWaarde'].std(ddof=0))
+
+    df = df[df['zscore'] < 3]
+
+    return abs(df['hstWaarde'].mean())
