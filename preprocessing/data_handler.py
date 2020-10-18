@@ -16,6 +16,10 @@ class DataHandler:
         self.predicted_rainfall_data = None
         self.pump_station_name = pump_station_name
 
+        self.max_level = None
+        self.min_level = None
+        self.pump_speed = None
+
         self.in_flow_path = in_flow_path
         self.inflow = None
         self.level = None
