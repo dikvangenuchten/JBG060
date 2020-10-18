@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import bisect
 
 
 class DataHandler:
@@ -16,6 +17,9 @@ class DataHandler:
         self.predicted_rainfall_data = None
         self.pump_station_name = pump_station_name
 
+        self.volume = None
+        self.max_volume = None
+        self.min_volume = None
         self.max_level = None
         self.min_level = None
         self.pump_speed = None
@@ -43,8 +47,14 @@ class DataHandler:
             # TODO fix naming in in_flow_df
             # TODO Change level to volume
             self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample("H").sum())
-            self.max_level = in_flow_df.iloc[:, 1].max()
-            self.min_level = in_flow_df.iloc[:, 1].min()
+            self.volume = pd.read_csv(os.path.join("processed", f"{self.pump_station_name}_1cm_m3.csv"))
+            self.volume.iloc[:, 1] = self.volume.iloc[:, 1].cumsum()
+            self.max_level = in_flow_df.iloc[:, 0].max()
+            self.min_level = in_flow_df.iloc[:, 0].min()
+
+            # 10 percent leeway to ensure the error is on the safe side
+            self.max_volume = self.level_to_volume(self.max_level * 0.9)
+            self.min_volume = self.level_to_volume(self.min_level * 1.1)
             self.level = in_flow_df.iloc[:, 1].resample("H").max()
 
         if self.actual_rainfall_path is not None:
@@ -66,10 +76,14 @@ class DataHandler:
 
     def get_initiate_data(self, t):
         level_at_t = self.level[t]
-        return self.min_level, self.max_level, self.pump_speed, level_at_t
+        volume_at_t = self.level_to_volume(level_at_t)
+        return self.min_volume, self.max_volume, self.pump_speed, volume_at_t
 
     def level_to_volume(self, level):
-        pass
+
+        idx = bisect.bisect_left(self.volume.iloc[:, 0], level)
+        closest_volume = self.volume.iloc[idx, 1]
+        return closest_volume
 
     def validation_iterator(self, start, end):
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)

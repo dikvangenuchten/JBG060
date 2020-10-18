@@ -26,6 +26,7 @@ if __name__ == '__main__':
     # Initiate the sewage system and assign pumps to it
     sewage_system = SewageSystem(pumps)
 
+    print("Starting simulation")
     for time_step in tqdm(range(start_t, end_t, 1), total=end_t - start_t):
         model_data = {pump_name: data_handlers.get(pump_name).get_x_data(time_step) for pump_name in pump_names}
         inflow_data = {pump_name: data_handlers.get(pump_name).get_y_data(time_step)[0] for pump_name in pump_names}
