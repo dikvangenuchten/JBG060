@@ -4,12 +4,15 @@ import pandas as pd
 import tensorflow as tf
 import bisect
 
+from digital_twin import utils
+
 
 class DataHandler:
     def __init__(self, pump_station_name: str,
                  actual_rainfall_path: str = "processed/data_rainfall_rain_timeseries_Download__.csv",
                  predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
-                 in_flow_path: str = os.path.join('processed', 'pump_in_flow_appr_Helftheuvel.csv')):
+                 in_flow_path: str = os.path.join('processed', 'pump_in_flow_appr_Helftheuvel.csv'),
+                 dry_days: bool = True, wet_days: bool = False):
         self.actual_rainfall_path = actual_rainfall_path
         self.actual_rainfall_data = None
 
@@ -31,6 +34,11 @@ class DataHandler:
         self.x_shape = None
         self.y_shape = None
 
+        self.dry_days = dry_days
+        self.wet_days = wet_days
+        self.train_ts = None
+        self.test_ts = None
+
     def load_data(self):
         """"
         Loads the data into memory
@@ -39,26 +47,35 @@ class DataHandler:
         if self.in_flow_path is not None:
             in_flow_df = pd.read_csv(self.in_flow_path, index_col=0, parse_dates=True)
             # Get hour of day as integer
-            print(self.in_flow_path)
             in_flow_df["flow_in"].replace(np.nan, 0, inplace=True)
 
             # in_flow_df["time_hour"] = pd.to_datetime(in_flow_df.index).hour.astype(int)
-            self.inflow = in_flow_df.resample("H").flow_in.sum()
+            self.inflow = in_flow_df.resample("H").flow_in.mean()
             # TODO fix naming in in_flow_df
             # TODO Change level to volume
-            self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample("H").sum())
-            self.volume = pd.read_csv(os.path.join("processed", f"{self.pump_station_name}_1cm_m3.csv"))
-            self.volume.iloc[:, 1] = self.volume.iloc[:, 1].cumsum()
+            self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample("H").mean())
+            self.volume = pd.read_csv(os.path.join("processed", f"{self.pump_station_name}_single_cm_m3.csv"),
+                                      index_col=0)
             self.max_level = in_flow_df.iloc[:, 0].max()
             self.min_level = in_flow_df.iloc[:, 0].min()
 
             # 10 percent leeway to ensure the error is on the safe side
-            self.max_volume = self.level_to_volume(self.max_level * 0.9)
-            self.min_volume = self.level_to_volume(self.min_level * 1.1)
+            self.max_volume = self.level_to_volume(self.max_level)
+            self.min_volume = self.level_to_volume(self.min_level)
+
+            # Resample the level data to hour, taking the maximum level during that hour
             self.level = in_flow_df.iloc[:, 1].resample("H").max()
 
         if self.actual_rainfall_path is not None:
-            self.actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
+            actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
+            time_data = actual_rainfall_data["Begin"]
+            actual_rainfall_data.drop(columns=["Begin", "Eind", "Kwaliteit"])
+            actual_rainfall_data = actual_rainfall_data.mean(axis=1)
+            self.actual_rainfall_data = pd.concat(objs=[time_data, actual_rainfall_data], axis=1, ignore_index=True)
+            self.actual_rainfall_data.columns = ["Begin", "Total Rainfall"]
+            self.actual_rainfall_data["Begin"] = pd.to_datetime(self.actual_rainfall_data["Begin"])
+            self.actual_rainfall_data = self.actual_rainfall_data.resample("H", on="Begin").mean()
+            self.actual_rainfall_data.reset_index(level=0, inplace=True)
 
         if self.predicted_rainfall_path is not None:
             self.predicted_rainfall_data = pd.read_csv(self.predicted_rainfall_path)
@@ -68,44 +85,61 @@ class DataHandler:
             self.predicted_rainfall_data = self.predicted_rainfall_data[self.predicted_rainfall_data.columns[3:7]]
             self.predicted_rainfall_data["time"] = self.predicted_rainfall_data.index % 24
 
+        max_data_len = min(len(self.predicted_rainfall_data), len(self.actual_rainfall_data), len(self.inflow))
+        self.actual_rainfall_data = self.actual_rainfall_data.iloc[:max_data_len - 1]
+        self.predicted_rainfall_data = self.predicted_rainfall_data.iloc[:max_data_len - 1]
+        self.inflow = self.inflow.iloc[:max_data_len - 1]
+
         if self.x_shape is None:
             x, y = self.__getitem__(48)
             # Shape is (batch_size, time, features)
             self.x_shape = (None, *np.shape(x))
             self.y_shape = (None, *np.shape(y))
 
+        self.train_ts, self.test_ts = utils.get_test_train_split(self.actual_rainfall_data,
+                                                                 dry_days=self.dry_days,
+                                                                 wet_days=self.wet_days)
+
     def get_initiate_data(self, t):
         level_at_t = self.level[t]
         volume_at_t = self.level_to_volume(level_at_t)
+        print(f"pump: {self.pump_station_name} has the following stats:\n"
+              f"min volume: {self.min_volume}: (level: {self.min_level})\n"
+              f"max volume: {self.max_volume}: (level: {self.max_level})\n"
+              f"start volume: {volume_at_t}: (level: {level_at_t})\n"
+              f"pump speed: {self.pump_speed}\n"
+              )
         return self.min_volume, self.max_volume, self.pump_speed, volume_at_t
 
     def level_to_volume(self, level):
 
-        idx = bisect.bisect_left(self.volume.iloc[:, 0], level)
-        closest_volume = self.volume.iloc[idx, 1]
+        idx = bisect.bisect_left(self.volume["cm"], level)
+        idx = max(0, min(len(self.volume["cm"]) - 1, idx))
+        closest_volume = self.volume["m3"][idx]
         return closest_volume
 
     def validation_iterator(self, start, end):
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)
 
     def train_iterator(self, batch_size):
-        return self.iterator(range(48, round(0.8 * len(self.inflow))), batch_size=batch_size)
+        return self.iterator(self.train_ts, batch_size=batch_size)
 
     def test_iterator(self, batch_size):
-        return self.iterator(range(round(0.9 * len(self.inflow)), len(self.inflow) - 48), batch_size=batch_size)
+        return self.iterator(self.test_ts, batch_size=batch_size)
 
     def iterator(self, dates, batch_size):
         """
         Iterates of the given dates (as index) and returns the data from those dates
-        :param dates:
+        :param dates: The time steps this iterator goes trough
+        :param batch_size: The amount of time steps per call are returned
         :return: data from __getitem__
         """
-        _dates = [_date for _date in reversed(dates)]
-        while len(_dates) != 0:
+        dates = dates.copy()
+        while len(dates) != 0:
             x_train = []
             y_true = []
-            for i in range(min(batch_size, len(_dates))):
-                date = _dates.pop()
+            for i in range(min(batch_size, len(dates))):
+                date = int(dates.pop())
                 x, y = self.__getitem__(date)
                 x_train.append(x)
                 y_true.append(y)

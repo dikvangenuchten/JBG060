@@ -1,8 +1,10 @@
 """"
 Various util functions for the digital twin
 """
+import math
 import os
 from typing import Tuple
+from itertools import zip_longest
 
 import numpy as np
 import tensorflow as tf
@@ -22,12 +24,12 @@ def initiate_pump(models_dir: str, pump_name: str, data_handler: DataHandler, t:
     :return pump: The initiated Pump
     """
     pump_model = load_model(models_dir=models_dir, pump_name=pump_name)
-    min_capacity, max_capacity, start_level, max_pump_flow = data_handler.get_initiate_data(t)
+    min_capacity, max_capacity, max_pump_flow, start_volume = data_handler.get_initiate_data(t)
     return Pump(name=pump_name,
                 min_capacity=min_capacity,
                 max_capacity=max_capacity,
                 max_pump_flow=max_pump_flow,
-                start_level=start_level,
+                start_volume=start_volume,
                 model=pump_model
                 )
 
@@ -81,11 +83,12 @@ def create_model(pump_name: str, data_handler: DataHandler) -> tf.keras.Model:
     model.build(data_handler.x_shape)
     model.summary()
     model.compile(
-        optimizer="rmsprop",
-        loss="mse",
+        optimizer="adam",
+        loss="mae",
         metrics=["mse", "mae"],
         run_eagerly=False
     )
+    model.summary()
     return model
 
 
@@ -103,10 +106,50 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
         print(f"Finished training on Epoch {epoch}")
         test_data = data_handler.test_iterator(batch_size=batch_size)
         model.evaluate(test_data)
+        x_data, y_true = data_handler[500]
+        y_pred = model.predict(tf.expand_dims(x_data, axis=0))[0]
+        print(f"Model: \n"
+              f"Differences: {y_true - y_pred}\n"
+              f"Predictions: {y_pred} \n"
+              f"True labels: {y_true}")
         print(f"Finished evaluation on Epoch {epoch}")
         model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
     model.save(os.path.join(models_dir, model_name, "trained_model"))
     return model
+
+
+def get_test_train_split(rainfall_data=None, dry_days: bool = True, wet_days: bool = False):
+    train_ts = []
+    test_ts = []
+
+    t_calculator(df=rainfall_data, time_col_name="Begin")
+    if dry_days and wet_days:
+        all_ts = rainfall_data["t"]
+    elif dry_days:
+        rainfall_data = rainfall_data[rainfall_data["Total Rainfall"] < 0.35]
+        all_ts = rainfall_data["t"]
+        pass
+    elif wet_days:
+        rainfall_data = rainfall_data[rainfall_data["Total Rainfall"] >= 0.35]
+        all_ts = rainfall_data["t"]
+    else:
+        raise ValueError("Invalid values")
+
+    # Skip first and last few days as they are needed as buffer by the way this mess is implemented
+    all_ts = all_ts[96:-96]
+    for subset_ts in grouper(all_ts, 24 * 7 * 10):
+        train_ts += subset_ts[:math.floor(len(subset_ts) * 0.8)]
+        test_ts += subset_ts[math.ceil(len(subset_ts) * 0.8):]
+    train_ts = list(filter(None, train_ts))
+    test_ts = list(filter(None, test_ts))
+    return train_ts, test_ts
+
+
+def grouper(iterable, n, fillvalue=None):
+    """Collect data into fixed-length chunks or blocks"""
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
 
 
 def dry_wet_days(df):
@@ -114,8 +157,8 @@ def dry_wet_days(df):
     Makes df for dry and wet days, need to make rainbuckets first
     """
 
-    dry_days = df[df['daily_rain_none'] == 1]
-    wet_days = df[df['daily_rain_none'] == 0]
+    dry_days = df[df['daily_rain_none']]
+    wet_days = df[df['daily_rain_none']]
 
     return dry_days, wet_days
 
@@ -126,14 +169,9 @@ def t_calculator(df, time_col_name: str, start_time: str = '2018-01-01 00:00:00'
     in the df
     """
 
-    from datetime import datetime
+    import pandas as pd
 
-    time_list = df[time_col_name].values.tolist()
-    datetime_list = []
-    for date in time_list:
-        datetime_list.append(int((datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
-                                  - datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600))
-    df['t'] = datetime_list
+    df["t"] = (df[time_col_name] - pd.to_datetime(start_time, format='%Y-%m-%d %H:%M:%S')).astype('timedelta64[h]')
 
 
 def prepare_data(data_handler: DataHandler, t: int) -> Tuple[np.ndarray, float]:

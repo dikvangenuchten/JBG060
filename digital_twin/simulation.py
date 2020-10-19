@@ -5,15 +5,15 @@ from digital_twin.utils import initiate_pump, load_train_data, prepare_data
 
 pump_names = [
     'Engelerschans',
-    'Maaspoort',
-    'Rompert',
-    'Oude Engelenseweg'
+    # 'Maaspoort',
+    # 'Rompert',
+    # 'Oude Engelenseweg'
 ]
 models_dir = "trained_models"
 start_t = 100
 end_t = 10000
 
-data_save_dir = "smart_sewage"
+data_save_dir = "smart_sewage_single_pump"
 
 if __name__ == '__main__':
     # Load the data
