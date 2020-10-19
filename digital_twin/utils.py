@@ -23,39 +23,50 @@ def initiate_pump(models_dir: str, pump_name: str, data_handler: DataHandler, t:
     :param t: The time step from which the level needs to be measured
     :return pump: The initiated Pump
     """
-    pump_model = load_model(models_dir=models_dir, pump_name=pump_name)
+    dry_pump_model = load_model(models_dir=models_dir, pump_name=pump_name, dry=True, wet=False)
+    wet_pump_model = load_model(models_dir=models_dir, pump_name=pump_name, dry=False, wet=True)
+
     min_capacity, max_capacity, max_pump_flow, start_volume = data_handler.get_initiate_data(t)
-    return Pump(name=pump_name,
-                min_capacity=min_capacity,
-                max_capacity=max_capacity,
-                max_pump_flow=max_pump_flow,
-                start_volume=start_volume,
-                model=pump_model
-                )
+    return Pump(
+        name=pump_name,
+        min_capacity=min_capacity,
+        max_capacity=max_capacity,
+        max_pump_flow=max_pump_flow,
+        start_volume=start_volume,
+        dry_model=dry_pump_model,
+        wet_model=wet_pump_model
+    )
 
 
-def load_model(models_dir: str, pump_name: str) -> tf.keras.Model:
+def load_model(models_dir: str, pump_name: str, dry: bool, wet: bool) -> tf.keras.Model:
     """
     :param models_dir:
     :param pump_name:
     :return: the keras model trained for this pumping stations
     """
-    path = os.path.join(models_dir, pump_name, "trained_model")
+    if dry and not wet:
+        model_type = "dry_only"
+    elif not dry and wet:
+        model_type = "wet_only"
+    else:
+        model_type = "dry_and_wet"
+    path = os.path.join(models_dir, pump_name, model_type, f"trained_model")
     try:
         model = tf.keras.models.load_model(filepath=path)
     except IOError as e:
         print(f"Trained model not available for {pump_name}, training from scratch")
-        model = train(models_dir=models_dir, pump_name=pump_name)
+        model = train(models_dir=models_dir, pump_name=pump_name, dry=dry, wet=wet)
     return model
 
 
-def train(models_dir: str, pump_name: str) -> tf.keras.Model:
+def train(models_dir: str, pump_name: str, dry, wet) -> tf.keras.Model:
     """
     Trains a model based on the pump name
     """
     data_handler = load_train_data(pump_name=pump_name)
     model = create_model(pump_name=pump_name, data_handler=data_handler)
-    train_model(epochs=10, data_handler=data_handler, model=model, models_dir=models_dir, model_name=pump_name)
+    train_model(epochs=10, data_handler=data_handler, model=model, models_dir=models_dir, model_name=pump_name,
+                dry_days=dry, wet_days=wet)
     return model
 
 
@@ -94,17 +105,18 @@ def create_model(pump_name: str, data_handler: DataHandler) -> tf.keras.Model:
 
 def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, models_dir: str,
                 model_name: str = "unnamed",
-                batch_size: int = 64, loss_weights: dict = None) -> tf.keras.Model:
+                batch_size: int = 64, loss_weights: dict = None,
+                dry_days=True, wet_days=False) -> tf.keras.Model:
     """"
     Trains a model, and saves it to cwd/models_dir/model_name/trained_model
     To be loaded by
     """
     for epoch in range(epochs):
         print(f"Starting Epoch {epoch}")
-        train_data = data_handler.train_iterator(batch_size=batch_size)
+        train_data = data_handler.train_iterator(batch_size=batch_size, dry_days=dry_days, wet_days=wet_days)
         model.fit(train_data, class_weight=loss_weights)
         print(f"Finished training on Epoch {epoch}")
-        test_data = data_handler.test_iterator(batch_size=batch_size)
+        test_data = data_handler.test_iterator(batch_size=batch_size, dry_days=dry_days, wet_days=wet_days)
         model.evaluate(test_data)
         x_data, y_true = data_handler[500]
         y_pred = model.predict(tf.expand_dims(x_data, axis=0))[0]

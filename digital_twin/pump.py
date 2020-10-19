@@ -27,7 +27,8 @@ class Pump:
         self.flood: int = 0
         self.pump_changes: int = 0
         self.pump_mode = 'Off'
-        self.predicted_inflows = None
+        self.dry_predicted_inflows = None
+        self.wet_predicted_inflows = None
         self.ahead_planning: int = 24
         self.discount_factor = 0.9
         self.overflow_penalty = 10
@@ -46,7 +47,8 @@ class Pump:
         """"
         Updates internal values needed for deciding what to do this time step
         """
-        self.predicted_inflows = self.dry_model.predict(np.expand_dims(model_input, 0))[0]
+        self.dry_predicted_inflows = self.dry_model.predict(np.expand_dims(model_input, 0))[0]
+        self.wet_predicted_inflows = self.wet_model.predict(np.expand_dims(model_input, 0))[0]
 
     def post_step(self, pump_speeds, actual_inflow):
         """
@@ -90,7 +92,7 @@ class Pump:
         volume = self.volume
         min_pump_speeds = []
         for t in range(delta_t):
-            volume += self.predicted_inflows[t]
+            volume += self.dry_predicted_inflows[t]
             overflow = min(0, self.max_capacity - volume)
             min_pump_speeds.append(overflow / self.max_pump_flow)
 
@@ -138,8 +140,8 @@ class Pump:
         """"
         :returns the predicted inflow at t
         """
-        assert 0 <= delta_t < len(self.predicted_inflows), "That time step does not have a prediction yet"
-        return self.predicted_inflows[delta_t]
+        assert 0 <= delta_t < len(self.dry_predicted_inflows), "That time step does not have a prediction yet"
+        return self.dry_predicted_inflows[delta_t]
 
     def max_predicted_level(self, delta_t):
         """"
@@ -198,15 +200,16 @@ class Pump:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(
-                    ["Time", "Level", "Predicted Inflow", "Actual Inflow", "Actual Outflow"]
+                    ["Time", "Level", "Predicted Wet Inflow", "Predicted Dry Inflow", "Actual Inflow", "Actual Outflow"]
                 )
 
         # append a row whenever function is called
         with open(f'{filename}.csv', 'a', newline='') as writable_file:
             csv.writer(writable_file).writerow(
-                [t, self.volume, self.predicted_inflows[0], self.actual_inflow, self.actual_outflow]
+                [t, self.volume, self.wet_predicted_inflows[0], self.dry_predicted_inflows[0], self.actual_inflow,
+                 self.actual_outflow]
             )
             print(f"pump: {self.pump_name}\n"
-                  f"predicted inflow: {self.predicted_inflows[0]}\n"
+                  f"predicted inflow: {self.dry_predicted_inflows[0]}\n"
                   f"actual inflow   : {self.actual_inflow}\n"
                   f"actual outflow  : {self.actual_outflow}")

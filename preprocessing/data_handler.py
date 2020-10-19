@@ -96,10 +96,6 @@ class DataHandler:
             self.x_shape = (None, *np.shape(x))
             self.y_shape = (None, *np.shape(y))
 
-        self.train_ts, self.test_ts = utils.get_test_train_split(self.actual_rainfall_data,
-                                                                 dry_days=self.dry_days,
-                                                                 wet_days=self.wet_days)
-
     def get_initiate_data(self, t):
         level_at_t = self.level[t]
         volume_at_t = self.level_to_volume(level_at_t)
@@ -121,11 +117,17 @@ class DataHandler:
     def validation_iterator(self, start, end):
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)
 
-    def train_iterator(self, batch_size):
-        return self.iterator(self.train_ts, batch_size=batch_size)
+    def train_iterator(self, batch_size, dry_days, wet_days):
+        train_ts, _ = utils.get_test_train_split(self.actual_rainfall_data,
+                                                 dry_days,
+                                                 wet_days)
+        return self.iterator(train_ts, batch_size=batch_size)
 
-    def test_iterator(self, batch_size):
-        return self.iterator(self.test_ts, batch_size=batch_size)
+    def test_iterator(self, batch_size, dry_days, wet_days):
+        _, test_ts = utils.get_test_train_split(self.actual_rainfall_data,
+                                                dry_days,
+                                                wet_days)
+        return self.iterator(test_ts, batch_size=batch_size)
 
     def iterator(self, dates, batch_size):
         """
