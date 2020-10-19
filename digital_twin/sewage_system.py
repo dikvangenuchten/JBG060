@@ -25,7 +25,7 @@ class SewageSystem:
             pump_bounds = {pump_name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
             self.bounds.update(pump_bounds)
 
-    def dumb_step(self, model_data: dict, inflow_data: dict):
+    def dumb_step(self, model_data: dict, inflow_data: dict, lookahead: bool):
         """
         Simulates the current system
         """
@@ -39,7 +39,8 @@ class SewageSystem:
         for pump_name, inflow in inflow_data.items():
             pump = self.pumps[pump_name]
             mode = pump.pump_mode
-            if (bucket := pump.get_bucket()) > 4:
+            bucket = pump.get_bucket() if not lookahead else pump.get_predicted_bucket()
+            if bucket > 4:
                 mode = "On"
             elif bucket <= 2:
                 mode = "Off"
@@ -73,7 +74,7 @@ class SewageSystem:
         start = time.time()
         print("Start optimize")
         optimizer.maximize()
-        print(f"Optimizing took: {time.time() -start}")
+        print(f"Optimizing took: {time.time() - start}")
         optimal_packed_dict = optimizer.max
         optimal_params = optimal_packed_dict["params"]
         optimal_pumps_speeds = self.dict_unpacker(optimal_params)

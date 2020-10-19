@@ -172,6 +172,9 @@ class Pump:
         """
         return self.to_bucket(self.volume)
 
+    def get_predicted_bucket(self):
+        return self.to_bucket(self.volume + self._inflow(0))
+
     def to_bucket(self, level):
         """"
         Calculates what bucket this level belongs to
@@ -210,6 +213,7 @@ class Pump:
                  self.actual_outflow]
             )
             print(f"pump: {self.pump_name}\n"
-                  f"predicted inflow: {self.dry_predicted_inflows[0]}\n"
+                  f"predicted dry inflow: {self.dry_predicted_inflows[0]}\n"
+                  f"predicted wet inflow: {self.wet_predicted_inflows[0]}\n"
                   f"actual inflow   : {self.actual_inflow}\n"
                   f"actual outflow  : {self.actual_outflow}")

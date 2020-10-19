@@ -108,7 +108,7 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
                 batch_size: int = 64, loss_weights: dict = None,
                 dry_days=True, wet_days=False) -> tf.keras.Model:
     """"
-    Trains a model, and saves it to cwd/models_dir/model_name/trained_model
+    Trains a model, and saves it to cwd/models_dir/model_name/model_type/trained_model
     To be loaded by
     """
     for epoch in range(epochs):
@@ -118,12 +118,12 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
         print(f"Finished training on Epoch {epoch}")
         test_data = data_handler.test_iterator(batch_size=batch_size, dry_days=dry_days, wet_days=wet_days)
         model.evaluate(test_data)
-        x_data, y_true = data_handler[500]
-        y_pred = model.predict(tf.expand_dims(x_data, axis=0))[0]
-        print(f"Model: \n"
-              f"Differences: {y_true - y_pred}\n"
-              f"Predictions: {y_pred} \n"
-              f"True labels: {y_true}")
+        # x_data, y_true = data_handler[500]
+        # y_pred = model.predict(tf.expand_dims(x_data, axis=0))[0]
+        # print(f"Model: \n"
+        #       f"Differences: {y_true - y_pred}\n"
+        #       f"Predictions: {y_pred} \n"
+        #       f"True labels: {y_true}")
         print(f"Finished evaluation on Epoch {epoch}")
         model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
     model.save(os.path.join(models_dir, model_name, "trained_model"))

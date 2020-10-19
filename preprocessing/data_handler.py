@@ -137,18 +137,23 @@ class DataHandler:
         :return: data from __getitem__
         """
         dates = dates.copy()
-        while len(dates) != 0:
-            x_train = []
-            y_true = []
-            for i in range(min(batch_size, len(dates))):
-                date = int(dates.pop())
-                x, y = self.__getitem__(date)
-                x_train.append(x)
-                y_true.append(y)
+        print(len(dates))
+        if len(dates):
+            while len(dates) != 0:
+                x_train = []
+                y_true = []
+                for i in range(min(batch_size, len(dates))):
+                    date = int(dates.pop())
+                    x, y = self.__getitem__(date)
+                    x_train.append(x)
+                    y_true.append(y)
 
-            x_train, y_true = np.array(x_train), np.array(y_true)
+                x_train, y_true = np.array(x_train), np.array(y_true)
 
-            yield x_train, y_true
+                yield x_train, y_true
+        else:
+            x_train, y_true = self.__getitem__(100)
+            yield np.expand_dims(x_train, axis=0), np.expand_dims(y_true, axis=0)
 
     def __getitem__(self, index: int):
         """"
