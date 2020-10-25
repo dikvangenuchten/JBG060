@@ -1,4 +1,5 @@
 import os
+import time
 import csv
 import numpy as np
 from digital_twin.pump import Pump
@@ -12,7 +13,7 @@ class SewageSystem:
         self.max_flow_deviation = 0.1
         self.max_level = 7
         self.target_level = 1
-        self.look_ahead = 24
+        self.look_ahead = 6
         self.discount_factor = 0.90
         self.total_inflow = 0
         self.total_outflow = 0
@@ -23,6 +24,38 @@ class SewageSystem:
         for pump_name in self.pumps.keys():
             pump_bounds = {pump_name + "_" + str(i): (0.55, 1) for i in range(self.look_ahead)}
             self.bounds.update(pump_bounds)
+
+    def dumb_step(self, model_data: dict, inflow_data: dict, lookahead: bool):
+        """
+        Simulates the current system
+        """
+        for pump_name, model_input in model_data.items():
+            self.pumps.get(pump_name).pre_step(model_input)
+
+        total_step_inflow = 0
+        total_step_outflow = 0
+        total_step_level = 0
+        total_step_overflows = 0
+        for pump_name, inflow in inflow_data.items():
+            pump = self.pumps[pump_name]
+            mode = pump.pump_mode
+            bucket = pump.get_bucket() if not lookahead else pump.get_predicted_bucket()
+            if bucket > 4:
+                mode = "On"
+            elif bucket <= 2:
+                mode = "Off"
+
+            if mode == "On":
+                inflow, outflow, level, overflow = pump.post_step(pump_speeds=[1], actual_inflow=inflow)
+            else:
+                inflow, outflow, level, overflow = pump.post_step(pump_speeds=[0], actual_inflow=inflow)
+            total_step_inflow += inflow
+            total_step_outflow += outflow
+            total_step_level += level
+            total_step_overflows += overflow
+
+        self.total_outflow = total_step_outflow
+        self.total_inflow = total_step_inflow
 
     def step(self, model_data: dict, inflow_data: dict):
         """"
@@ -35,10 +68,13 @@ class SewageSystem:
         optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
             f=self.optimization_func,
             pbounds=self.bounds,
-            verbose=0
-        )
+            verbose=0,
 
+        )
+        start = time.time()
+        print("Start optimize")
         optimizer.maximize()
+        print(f"Optimizing took: {time.time() - start}")
         optimal_packed_dict = optimizer.max
         optimal_params = optimal_packed_dict["params"]
         optimal_pumps_speeds = self.dict_unpacker(optimal_params)
@@ -70,19 +106,21 @@ class SewageSystem:
         :return: float the penalty occuered from this pumping scenario
         """
         pump_speeds = self.dict_unpacker(packed_dict)
-        pump_cost = 0
+        pump_overflow_cost = 0
+        pump_level_cost = 0
         all_flows = np.zeros(self.look_ahead)
         for pump, speed in pump_speeds.items():
-            cost, flows = self.pumps[pump].simulate_pump_speeds(pump_speeds=speed)
+            overflow_cost, level_cost, flows = self.pumps[pump].simulate_pump_speeds(pump_speeds=speed)
             all_flows += flows
-            pump_cost += cost
+            pump_overflow_cost += overflow_cost
+            pump_level_cost += level_cost
 
         smooth_cost = 0
         perc_diffs = np.diff(all_flows) / (all_flows[:-1] + self.epsilon) * 100
         for i, perc_diff in enumerate(perc_diffs):
             smooth_cost += abs(perc_diff) * self.discount_factor ** i
 
-        return -(pump_cost + smooth_cost)
+        return -(pump_overflow_cost + smooth_cost + pump_level_cost)
 
     def dict_unpacker(self, packed_dict: {str: float}):
         """"
@@ -134,7 +172,7 @@ class SewageSystem:
         filename = os.path.join(directory, "complete_sewage_system")
 
         # writes column names if file does not exist yet
-        if not os.path.exists(filename):
+        if not os.path.isfile(filename):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(["Time", "Total Inflow", "Total Outflow"])
