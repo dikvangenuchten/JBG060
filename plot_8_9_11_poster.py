@@ -61,9 +61,15 @@ def PlotModelComparison(old:pd.DataFrame,new:pd.DataFrame,hourrange:range=None,d
     hourrange:range =  a  range from where to where to plot, most ~1 week of data (range of 168 hours) is recommended to keep the data readable
     deriv:bool = if you want the original data or the 1st derivative of the data, 1= derivative of the data.
     """
-
+    #some Prepping
+    old['Total Outflow'] = old['Total Outflow'].astype(float)
+    new['Total Outflow'] = new['Total Outflow'].astype(float)
     old['Time'] = old['Time'].astype(int)
     new['Time'] = new['Time'].astype(int)
+    a =[new['Total Outflow'][i]-new['Total Outflow'][i-1] for i in range(1,len(new))]
+    a.insert(0,new['Total Outflow'][0])
+    new['diff'] = a
+    
     if hourrange:
         old=old[old['Time'].isin(list(hourrange))]
         new=new[new['Time'].isin(list(hourrange))]
@@ -90,6 +96,7 @@ def PlotModelComparison(old:pd.DataFrame,new:pd.DataFrame,hourrange:range=None,d
         plt.savefig(f'{derivTitle}_Outflow_over_Time.png',bbox_inches='tight',dpi=1000)
     return plt.show()
 
+
 if __name__ == '__main__':
     
     #plot fig 8 and 9 poster
@@ -102,21 +109,10 @@ if __name__ == '__main__':
     
     
     #plot fig 11 poster
-    #prepping data
     old = pd.read_csv('dumb_sewage_multi_pump_dry_and_wet\\dumb_sewage_multi_pump_dry_and_wet\\complete_sewage_system.csv')
     new = pd.read_csv('smart_sewage_multi_pump_dry_and_wet_with_lookahead\\smart_sewage_multi_pump_dry_and_wet_with_lookahead\\complete_sewage_system.csv')
-    
     #dropping repeating headers, if fixed remove this line
     old = old.drop([i for i in range(len(old)) if i%2==1]).reset_index().drop('index',axis=1)
-    
-    old['Total Outflow'] = old['Total Outflow'].astype(float)
-    new['Total Outflow'] = new['Total Outflow'].astype(float)
-    
-    #only new outflow is cumulative so this effect needs to be removed for comparability
-    a =[new['Total Outflow'][i]-new['Total Outflow'][i-1] for i in range(1,len(new))]
-    a.insert(0,new['Total Outflow'][0])
-    new['diff'] = a
-    
     #example
     PlotModelComparison(old,new,range(8000,8168),deriv=0)
         
