@@ -12,7 +12,7 @@ class DataHandler:
                  actual_rainfall_path: str = "processed/data_rainfall_rain_timeseries_Download__.csv",
                  predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
                  in_flow_path: str = os.path.join('processed', 'pump_in_flow_appr_Helftheuvel.csv'),
-                 dry_days: bool = True, wet_days: bool = False):
+                 dry_days: bool = True, wet_days: bool = False, sample_time: str = "H"):
         self.actual_rainfall_path = actual_rainfall_path
         self.actual_rainfall_data = None
 
@@ -39,6 +39,8 @@ class DataHandler:
         self.train_ts = None
         self.test_ts = None
 
+        self.sample_time = sample_time
+
     def load_data(self):
         """"
         Loads the data into memory
@@ -50,10 +52,10 @@ class DataHandler:
             in_flow_df["flow_in"].replace(np.nan, 0, inplace=True)
 
             # in_flow_df["time_hour"] = pd.to_datetime(in_flow_df.index).hour.astype(int)
-            self.inflow = in_flow_df.resample("H").flow_in.mean()
+            self.inflow = in_flow_df.resample(self.sample_time).pad().flow_in.resample(self.sample_time).mean()
             # TODO fix naming in in_flow_df
             # TODO Change level to volume
-            self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample("H").mean())
+            self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample(self.sample_time).mean())
             self.volume = pd.read_csv(os.path.join("processed", f"{self.pump_station_name}_single_cm_m3.csv"),
                                       index_col=0)
             self.max_level = in_flow_df.iloc[:, 0].max()
@@ -64,7 +66,7 @@ class DataHandler:
             self.min_volume = self.level_to_volume(self.min_level)
 
             # Resample the level data to hour, taking the maximum level during that hour
-            self.level = in_flow_df.iloc[:, 1].resample("H").max()
+            self.level = in_flow_df.iloc[:, 1].resample(self.sample_time).max()
 
         if self.actual_rainfall_path is not None:
             actual_rainfall_data = pd.read_csv(self.actual_rainfall_path)
@@ -74,16 +76,17 @@ class DataHandler:
             self.actual_rainfall_data = pd.concat(objs=[time_data, actual_rainfall_data], axis=1, ignore_index=True)
             self.actual_rainfall_data.columns = ["Begin", "Total Rainfall"]
             self.actual_rainfall_data["Begin"] = pd.to_datetime(self.actual_rainfall_data["Begin"])
-            self.actual_rainfall_data = self.actual_rainfall_data.resample("H", on="Begin").mean()
+            self.actual_rainfall_data = self.actual_rainfall_data.resample(self.sample_time, on="Begin").mean()
             self.actual_rainfall_data.reset_index(level=0, inplace=True)
 
         if self.predicted_rainfall_path is not None:
             self.predicted_rainfall_data = pd.read_csv(self.predicted_rainfall_path)
-            self.predicted_rainfall_data["time_hour"] = pd.to_datetime(
-                self.predicted_rainfall_data.Time
-            ).dt.hour.astype(float)
+            self.predicted_rainfall_data["Time"] = pd.to_datetime(self.predicted_rainfall_data["Time"])
+
+            self.predicted_rainfall_data.set_index(keys=["Time"], inplace=True)
+            self.predicted_rainfall_data.resample(self.sample_time).interpolate()
             self.predicted_rainfall_data = self.predicted_rainfall_data[self.predicted_rainfall_data.columns[3:7]]
-            self.predicted_rainfall_data["time"] = self.predicted_rainfall_data.index % 24
+            self.predicted_rainfall_data["time_hour"] = self.predicted_rainfall_data.index.hour.astype(float)
 
         max_data_len = min(len(self.predicted_rainfall_data), len(self.actual_rainfall_data), len(self.inflow))
         self.actual_rainfall_data = self.actual_rainfall_data.iloc[:max_data_len - 1]
@@ -118,15 +121,15 @@ class DataHandler:
         return self.iterator(np.linspace(start=start, stop=end, num=end - start, dtype=np.int), batch_size=1)
 
     def train_iterator(self, batch_size, dry_days, wet_days):
-        train_ts, _ = utils.get_test_train_split(self.actual_rainfall_data,
-                                                 dry_days,
-                                                 wet_days)
+        train_ts, _ = utils.get_test_train_on_inflow(self.inflow,
+                                                     dry_days,
+                                                     wet_days)
         return self.iterator(train_ts, batch_size=batch_size)
 
     def test_iterator(self, batch_size, dry_days, wet_days):
-        _, test_ts = utils.get_test_train_split(self.actual_rainfall_data,
-                                                dry_days,
-                                                wet_days)
+        _, test_ts = utils.get_test_train_on_inflow(self.inflow,
+                                                    dry_days,
+                                                    wet_days)
         return self.iterator(test_ts, batch_size=batch_size)
 
     def iterator(self, dates, batch_size):

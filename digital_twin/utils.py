@@ -50,22 +50,23 @@ def load_model(models_dir: str, pump_name: str, dry: bool, wet: bool) -> tf.kera
         model_type = "wet_only"
     else:
         model_type = "dry_and_wet"
+    save_dir = os.path.join(models_dir, pump_name, model_type)
     path = os.path.join(models_dir, pump_name, model_type, f"trained_model")
     try:
         model = tf.keras.models.load_model(filepath=path)
     except IOError as e:
         print(f"Trained model not available for {pump_name}, training from scratch")
-        model = train(models_dir=models_dir, pump_name=pump_name, dry=dry, wet=wet)
+        model = train(save_dir=save_dir, pump_name=pump_name, dry=dry, wet=wet)
     return model
 
 
-def train(models_dir: str, pump_name: str, dry, wet) -> tf.keras.Model:
+def train(save_dir: str, pump_name: str, dry, wet) -> tf.keras.Model:
     """
     Trains a model based on the pump name
     """
     data_handler = load_train_data(pump_name=pump_name)
     model = create_model(pump_name=pump_name, data_handler=data_handler)
-    train_model(epochs=10, data_handler=data_handler, model=model, models_dir=models_dir, model_name=pump_name,
+    train_model(epochs=10, data_handler=data_handler, model=model, save_dir=save_dir,
                 dry_days=dry, wet_days=wet)
     return model
 
@@ -103,8 +104,7 @@ def create_model(pump_name: str, data_handler: DataHandler) -> tf.keras.Model:
     return model
 
 
-def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, models_dir: str,
-                model_name: str = "unnamed",
+def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, save_dir: str,
                 batch_size: int = 64, loss_weights: dict = None,
                 dry_days=True, wet_days=False) -> tf.keras.Model:
     """"
@@ -125,16 +125,46 @@ def train_model(epochs: int, data_handler: DataHandler, model: tf.keras.Model, m
         #       f"Predictions: {y_pred} \n"
         #       f"True labels: {y_true}")
         print(f"Finished evaluation on Epoch {epoch}")
-        model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
-    model.save(os.path.join(models_dir, model_name, "trained_model"))
+        model.save(os.path.join(save_dir, "checkpoints", str(epoch)))
+    model.save(os.path.join(save_dir, "trained_model"))
     return model
 
 
-def get_test_train_split(rainfall_data=None, dry_days: bool = True, wet_days: bool = False):
+def get_test_train_on_inflow(inflow=None, dry_days: bool = True, wet_days: bool = False):
+    train_ts = []
+    test_ts = []
+
+    ts = t_calculator(df=inflow, time_col_name="index")
+    first_t = ts.min()
+    last_t = ts.max()
+    if dry_days and wet_days:
+        all_ts = ts
+    elif dry_days:
+        all_ts = ts[inflow < 2 * inflow.mean()]
+        pass
+    elif wet_days:
+        all_ts = ts[inflow > 1.5 * inflow.mean()]
+    else:
+        raise ValueError("Invalid values")
+
+    # Skip first and last days as they are needed as buffer for the predictions
+    all_ts = all_ts[first_t + 50 < all_ts]
+    all_ts = all_ts[all_ts < last_t - 50]
+    for subset_ts in grouper(all_ts, 24 * 7 * 10):
+        train_ts += subset_ts[:math.floor(len(subset_ts) * 0.8)]
+        test_ts += subset_ts[math.ceil(len(subset_ts) * 0.8):]
+    train_ts = list(filter(None, train_ts))
+    test_ts = list(filter(None, test_ts))
+    return train_ts, test_ts
+
+
+def get_test_train_on_rain(rainfall_data=None, dry_days: bool = True, wet_days: bool = False):
     train_ts = []
     test_ts = []
 
     t_calculator(df=rainfall_data, time_col_name="Begin")
+    first_t = rainfall_data["t"].min()
+    last_t = rainfall_data["t"].max()
     if dry_days and wet_days:
         all_ts = rainfall_data["t"]
     elif dry_days:
@@ -142,13 +172,14 @@ def get_test_train_split(rainfall_data=None, dry_days: bool = True, wet_days: bo
         all_ts = rainfall_data["t"]
         pass
     elif wet_days:
-        rainfall_data = rainfall_data[rainfall_data["Total Rainfall"] >= 0.35]
+        rainfall_data = rainfall_data[rainfall_data["Total Rainfall"] >= 0.25]
         all_ts = rainfall_data["t"]
     else:
         raise ValueError("Invalid values")
 
-    # Skip first and last few days as they are needed as buffer by the way this mess is implemented
-    all_ts = all_ts[96:-96]
+    # Skip first and last days as they are needed as buffer for the predictions
+    all_ts = all_ts[first_t + 50 < all_ts]
+    all_ts = all_ts[all_ts < last_t - 50]
     for subset_ts in grouper(all_ts, 24 * 7 * 10):
         train_ts += subset_ts[:math.floor(len(subset_ts) * 0.8)]
         test_ts += subset_ts[math.ceil(len(subset_ts) * 0.8):]
@@ -182,8 +213,13 @@ def t_calculator(df, time_col_name: str, start_time: str = '2018-01-01 00:00:00'
     """
 
     import pandas as pd
+    if time_col_name == "index":
+        t = (df.index - pd.to_datetime(start_time, format='%Y-%m-%d %H:%M:%S')).astype('timedelta64[h]')
 
-    df["t"] = (df[time_col_name] - pd.to_datetime(start_time, format='%Y-%m-%d %H:%M:%S')).astype('timedelta64[h]')
+    else:
+        t = (df[time_col_name] - pd.to_datetime(start_time, format='%Y-%m-%d %H:%M:%S')).astype('timedelta64[h]')
+        df["t"] = t
+    return t
 
 
 def prepare_data(data_handler: DataHandler, t: int) -> Tuple[np.ndarray, float]:

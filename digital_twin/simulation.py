@@ -10,10 +10,10 @@ pump_names = [
     'Oude Engelenseweg'
 ]
 models_dir = "trained_models"
-start_t = 100
-end_t = 10000
+start_t = 8000
+end_t = 8000 + 168
 
-data_save_dir = "dumb_sewage_multi_pump_dry_and_wet"
+data_save_dir = "smart_sewage_multi_pump_dry_and_wet_with_lookahead"
 
 if __name__ == '__main__':
     # Load the data
@@ -30,8 +30,8 @@ if __name__ == '__main__':
     for time_step in tqdm(range(start_t, end_t, 1), total=end_t - start_t):
         model_data = {pump_name: data_handlers.get(pump_name).get_x_data(time_step) for pump_name in pump_names}
         inflow_data = {pump_name: data_handlers.get(pump_name).get_y_data(time_step)[0] for pump_name in pump_names}
-        # sewage_system.step(model_data, inflow_data)
-        sewage_system.dumb_step(model_data, inflow_data)
+        sewage_system.step(model_data, inflow_data)
+        # sewage_system.dumb_step(model_data, inflow_data, lookahead=True)
         sewage_system.save_data(t=time_step, directory=data_save_dir)
     print("Done")
     # TODO run plotter/print evaluation summary

@@ -18,6 +18,9 @@ class SewageSystem:
         self.total_inflow = 0
         self.total_outflow = 0
         self.total_overflows = 0
+
+        self.total_step_inflow = 0
+        self.total_step_outflow = 0
         self.epsilon = 1e-8
 
         self.bounds = {}
@@ -57,6 +60,10 @@ class SewageSystem:
         self.total_outflow = total_step_outflow
         self.total_inflow = total_step_inflow
 
+    def known_step(self, model_data: dict, inflow_data: dict):
+        for pump_name, model_input in model_data.items():
+            pass
+
     def step(self, model_data: dict, inflow_data: dict):
         """"
         Calculates the (approximate) optimal pumping scenario for each pump
@@ -64,40 +71,43 @@ class SewageSystem:
         """
         for pump_name, model_input in model_data.items():
             self.pumps.get(pump_name).pre_step(model_input)
-
-        optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
-            f=self.optimization_func,
-            pbounds=self.bounds,
-            verbose=0,
-
-        )
-        start = time.time()
-        print("Start optimize")
-        optimizer.maximize()
-        print(f"Optimizing took: {time.time() - start}")
-        optimal_packed_dict = optimizer.max
-        optimal_params = optimal_packed_dict["params"]
-        optimal_pumps_speeds = self.dict_unpacker(optimal_params)
+        try:
+            optimizer = bayes_opt.bayesian_optimization.BayesianOptimization(
+                f=self.optimization_func,
+                pbounds=self.bounds,
+                verbose=0,
+            )
+            start = time.time()
+            print("Start optimize")
+            optimizer.maximize(n_iter=15)
+            print(f"Optimizing took: {time.time() - start}")
+            optimal_packed_dict = optimizer.max
+            optimal_params = optimal_packed_dict["params"]
+            optimal_pumps_speeds = self.dict_unpacker(optimal_params)
+            cost = optimal_packed_dict.get('target')
+        except Exception as e:
+            print(f"Exception {e}")
+            optimal_pumps_speeds = np.ones(shape=(len(self.pumps), len(self.pumps)))
+            cost = -100000
 
         step_stats = {pump_name: self.pumps[pump_name].post_step(optimal_speeds, inflow_data.get(pump_name))
                       for pump_name, optimal_speeds in optimal_pumps_speeds.items()}
 
-        total_step_inflow = 0
-        total_step_outflow = 0
+        self.total_step_inflow = 0
+        self.total_step_outflow = 0
         total_step_level = 0
         total_step_overflows = 0
         for inflow, outflow, level, overflow in step_stats.values():
-            total_step_inflow += inflow
-            total_step_outflow += outflow
+            self.total_step_inflow += inflow
+            self.total_step_outflow += outflow
             total_step_level += level
             total_step_overflows += overflow
 
-        print(f"Lowest Cost Found: {optimal_packed_dict.get('target'): 10f}\n"
-              f"Total Inflow: {total_step_inflow}, Total Outflow: {total_step_outflow}\n"
-              f"Total Level: {total_step_level}, Total Overflows: {total_step_overflows}")
-        self.total_outflow += total_step_outflow
-        self.total_overflows += total_step_overflows
-        return optimal_packed_dict.get('target'), total_step_outflow
+        # print(f"Total Inflow: {total_step_inflow}, Total Outflow: {total_step_outflow}\n"
+        #       f"Total Level: {total_step_level}, Total Overflows: {total_step_overflows}")
+        self.total_outflow += self.total_step_outflow
+        self.total_overflows += self.total_step_overflows
+        return cost, self.total_step_outflow
 
     def optimization_func(self, **packed_dict):
         """
@@ -120,7 +130,7 @@ class SewageSystem:
         for i, perc_diff in enumerate(perc_diffs):
             smooth_cost += abs(perc_diff) * self.discount_factor ** i
 
-        return -(pump_overflow_cost + smooth_cost + pump_level_cost)
+        return -(pump_overflow_cost + 10 * smooth_cost + pump_level_cost)
 
     def dict_unpacker(self, packed_dict: {str: float}):
         """"
@@ -172,14 +182,14 @@ class SewageSystem:
         filename = os.path.join(directory, "complete_sewage_system")
 
         # writes column names if file does not exist yet
-        if not os.path.isfile(filename):
+        if not os.path.isfile(filename + ".csv"):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(["Time", "Total Inflow", "Total Outflow"])
 
         # append a row whenever function is called
         with open(f'{filename}.csv', 'a', newline='') as writable_file:
-            csv.writer(writable_file).writerow([t, self.total_inflow, self.total_outflow])
+            csv.writer(writable_file).writerow([t, self.total_step_inflow, self.total_step_outflow])
 
             # Also call each pump
         for pump in self.pumps.values():

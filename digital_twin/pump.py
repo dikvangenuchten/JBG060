@@ -85,7 +85,7 @@ class Pump:
                 overflow_cost += (self.overflow_penalty * (self.discount_factor ** i))
             levels[i] = level
             level_cost += self.to_bucket(level) * self.discount_factor ** i
-        print(overflow_cost, level_cost, adjusted_outflows)
+        # print(overflow_cost, level_cost, adjusted_outflows)
         return overflow_cost, level_cost, adjusted_outflows
 
     def get_min_safe_speeds(self, delta_t):
@@ -199,7 +199,7 @@ class Pump:
         filename = os.path.join(directory, self.pump_name)
 
         # writes column names if file does not exist yet
-        if not os.path.isfile(filename):
+        if not os.path.isfile(filename + ".csv"):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             with open(f'{filename}.csv', 'a', newline='') as writable_file:
                 csv.writer(writable_file).writerow(
@@ -212,8 +212,8 @@ class Pump:
                 [t, self.volume, self.wet_predicted_inflows[0], self.dry_predicted_inflows[0], self.actual_inflow,
                  self.actual_outflow]
             )
-            print(f"pump: {self.pump_name}\n"
-                  f"predicted dry inflow: {self.dry_predicted_inflows[0]}\n"
-                  f"predicted wet inflow: {self.wet_predicted_inflows[0]}\n"
-                  f"actual inflow   : {self.actual_inflow}\n"
-                  f"actual outflow  : {self.actual_outflow}")
+            # print(f"pump: {self.pump_name}\n"
+            #       f"predicted dry inflow: {self.dry_predicted_inflows[0]}\n"
+            #       f"predicted wet inflow: {self.wet_predicted_inflows[0]}\n"
+            #       f"actual inflow   : {self.actual_inflow}\n"
+            #       f"actual outflow  : {self.actual_outflow}")
