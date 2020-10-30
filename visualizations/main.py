@@ -33,5 +33,6 @@ if __name__ == '__main__':
     # example
     PlotModelComparison(old, new, range(8000, 8168), deriv=0)
 
+    # TODO explain
     figure2()
     figure4()
