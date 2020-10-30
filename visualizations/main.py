@@ -4,7 +4,7 @@ from visualizations.plot3a3bPoster import *
 from visualizations.plot_8_9_11_poster import *
 from visualizations.visualisations import *
 
-if __name__ == '__main__':
+def visualization_main():
     # datafile
     preds = pd.read_csv('RainfallPredictionsHourlyV3.csv')
     FalseNegPlot(preds, 'hand.png')
@@ -36,3 +36,6 @@ if __name__ == '__main__':
     # TODO explain
     figure2()
     figure4()
+
+if __name__ == '__main__':
+    visualization_main()

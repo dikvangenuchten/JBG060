@@ -4,7 +4,8 @@ from preprocessing.Rainbuckets import *
 from preprocessing.unzipify import *
 from preprocessing.concatenate_and_generate_overview import *
 
-if __name__ == '__main__':
+
+def preprocessing_main():
     data_path = "data"
 
     # Unzip in data folder
@@ -22,3 +23,7 @@ if __name__ == '__main__':
     train_data, test_data = split_weeks(rainfall_data, 8, 2)
     train_data.to_csv("processed\\train_data.csv")
     test_data.to_csv("processed\\test_data.csv")
+
+
+if __name__ == '__main__':
+    preprocessing_main()
