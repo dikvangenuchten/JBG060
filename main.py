@@ -15,7 +15,21 @@ model_dir = "saved_model"
 epochs = 3
 batch_size = 64
 loss_weights = {i: x for i, x in enumerate(np.linspace(start=1, stop=0.5, num=48, endpoint=False, dtype=int))}
-print(loss_weights)
+
+def train(epochs: int, data_handler: DataHandler, model: tf.keras.Model, models_dir: str, model_name: str = "unnamed",
+          batch_size: int = 64, loss_weights: dict = None):
+    for epoch in range(epochs):
+        print(f"Starting Epoch {epoch}")
+        train_data = data_handler.train_iterator(batch_size=batch_size)
+        model.fit(train_data, class_weight=loss_weights)
+        print(f"Finished training on Epoch {epoch}")
+        test_data = data_handler.test_iterator(batch_size=batch_size)
+        model.evaluate(test_data)
+        print(f"Finished evaluation on Epoch {epoch}")
+        model.save(os.path.join(models_dir, model_name, "checkpoints", str(epoch)))
+    model.save(os.path.join(model_name, model_name, "final_model"))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--unzipped', action='store_true', default=False,
@@ -30,7 +44,7 @@ if __name__ == '__main__':
         concatenate_and_generate_overview.search_and_concat(data_path)
 
     data_handler = DataHandler(data_path)
-    data_handler.load_data(batch_size=64)
+    data_handler.load_data()
 
     model = DiffPredictor("helftheuvel", input_shape=data_handler.x_shape)
     model.build(data_handler.x_shape)
@@ -42,19 +56,7 @@ if __name__ == '__main__':
         run_eagerly=False
     )
 
-    for epoch in range(epochs):
-        print(f"Starting Epoch {epoch}")
-        train_data = data_handler.train_iterator(batch_size=batch_size)
-        model.fit(train_data, class_weight=loss_weights)
-        print(f"Finished training on Epoch {epoch}")
-        test_data = data_handler.test_iterator(batch_size=batch_size)
-        model.evaluate(test_data)
-        print(f"Finished evaluation on Epoch {epoch}")
-        model.save(os.path.join(model_dir, "checkpoints", str(epoch)))
-
-    # TODO Write proper validation tool
-    model.summary()
-    model.save(model_dir)
+    train(epochs=epochs, data_handler=data_handler, model=model, models_dir=model_dir, model_name="helftheuvel")
 
     val_data = data_handler.validation_iterator(168, 336)
     outs = []
