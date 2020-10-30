@@ -3,6 +3,7 @@ import argparse
 
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 
 from preprocessing import concatenate_and_generate_overview
 from preprocessing import unzipify
@@ -11,9 +12,10 @@ from model.diff_predictor import DiffPredictor
 
 data_path = "data"
 model_dir = "saved_model"
-epochs = 10
+epochs = 3
 batch_size = 64
-
+loss_weights = {i: x for i, x in enumerate(np.linspace(start=1, stop=0.5, num=48, endpoint=False, dtype=int))}
+print(loss_weights)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--unzipped', action='store_true', default=False,
@@ -43,7 +45,7 @@ if __name__ == '__main__':
     for epoch in range(epochs):
         print(f"Starting Epoch {epoch}")
         train_data = data_handler.train_iterator(batch_size=batch_size)
-        model.fit(train_data)
+        model.fit(train_data, class_weight=loss_weights)
         print(f"Finished training on Epoch {epoch}")
         test_data = data_handler.test_iterator(batch_size=batch_size)
         model.evaluate(test_data)
@@ -51,5 +53,18 @@ if __name__ == '__main__':
         model.save(os.path.join(model_dir, "checkpoints", str(epoch)))
 
     # TODO Write proper validation tool
-
+    model.summary()
     model.save(model_dir)
+
+    val_data = data_handler.validation_iterator(168, 336)
+    outs = []
+    for x, y_true in val_data:
+        y_pred = model.predict(x)
+        out = {f"y_pred t+{i}": y_true[0][i] for i in range(len(y_true[0]))}
+        out.update({"y_true": y_true[0][0]})
+        outs.append(out)
+    val_df = pd.DataFrame(data=outs)
+    val_df.to_csv("model_predictions.csv")
+    print(val_df)
+    print(val_df.describe())
+    # TODO visualize outs

@@ -11,8 +11,8 @@ def split_weeks(df, train_weeks: int, test_weeks: int):
     index_list = indexed_df['index'].tolist()
 
     # Split the index list into subsets based on the total interval in days
-    train_interval = train_weeks * 7
-    total_interval = (train_weeks + test_weeks) * 7
+    train_interval = train_weeks * (7 * 24)
+    total_interval = (train_weeks + test_weeks) * (7 * 24)
     intervals = [index_list[x: x + total_interval] for x in range(0, len(index_list), total_interval)]
 
     # Set train and test data both to the current dataset
