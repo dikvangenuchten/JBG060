@@ -29,21 +29,3 @@ class DiffPredictor(tf.keras.Model):
         x = self.conv_3(x)
         x = self.flatten(x)
         return self.out(x)
-
-    def save(self,
-             filepath,
-             overwrite=True,
-             include_optimizer=True,
-             save_format=None,
-             signatures=None,
-             options=None):
-        """"
-        Saves the model to a folder, including the pump_station name
-        """
-        filepath = os.path.join(filepath, self.pump_station)
-        super(DiffPredictor, self).save(filepath=filepath,
-                                        overwrite=overwrite,
-                                        include_optimizer=include_optimizer,
-                                        save_format=save_format,
-                                        signatures=signatures,
-                                        options=options)
