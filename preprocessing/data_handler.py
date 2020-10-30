@@ -86,6 +86,7 @@ class DataHandler:
             self.predicted_rainfall_data.set_index(keys=["Time"], inplace=True)
             self.predicted_rainfall_data.resample(self.sample_time).interpolate()
             self.predicted_rainfall_data = self.predicted_rainfall_data[self.predicted_rainfall_data.columns[3:7]]
+
             self.predicted_rainfall_data["time_hour"] = self.predicted_rainfall_data.index.hour.astype(float)
 
         max_data_len = min(len(self.predicted_rainfall_data), len(self.actual_rainfall_data), len(self.inflow))
@@ -203,7 +204,17 @@ class DataHandler:
         diff_t = level_t - level_t-1
         with diff_0 = 0
         """
-        return self.inflow[t:t + delta]
+        return self.diff[t:t + delta]
+
+    def _get_flow(self, t, delta=48):
+        """
+        Returns the flow between t-delta and t were t=0 is the beginning of the dataset, being 2018-01-01 00:00
+        :param t: int, is the index from which point we want to get the data from
+        :param delta: int, the amount of rows after t we want to get the data from
+        :raise IndexOutOfRange error when delta is bigger then t
+        """
+        return self.flow_df[t:t+delta]
+
 
     def _get_rainfall_prediction(self, t, delta=48):
         """"
