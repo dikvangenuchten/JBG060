@@ -30,8 +30,3 @@ def split_weeks(df, train_weeks: int, test_weeks: int):
         test_df = test_df.drop(train_index)
 
     return train_df, test_df
-
-
-if __name__ == '__main__':
-    rainfall_data = pd.read_csv('rainfallpredictions1_1.csv')
-    train_data, test_data = split_weeks(rainfall_data, 8, 2)

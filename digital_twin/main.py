@@ -34,4 +34,3 @@ if __name__ == '__main__':
         # sewage_system.dumb_step(model_data, inflow_data, lookahead=True)
         sewage_system.save_data(t=time_step, directory=data_save_dir)
     print("Done")
-    # TODO run plotter/print evaluation summary
