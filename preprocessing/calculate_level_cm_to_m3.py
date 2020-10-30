@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 def calculate_single_cm_to_m3(pump):
-    inflow_df = pd.read_csv(f"../processed/pump_in_flow_appr_Helftheuvel.csv")
+    inflow_df = pd.read_csv(f"processed\\pump_in_flow_appr_{pump}.csv")
 
     # Calculate the difference in pump water volume, so calculating how much water causes the difference
     inflow_df['in_minus_out'] = abs(inflow_df['flow_in'] - inflow_df['hstWaarde'])
@@ -26,8 +26,3 @@ def calculate_single_cm_to_m3(pump):
     resulting_df['m3'] = mean_df['mean_in_minus_out_per_cm'].fillna(0).cumsum()
     print("Pump done!")
     return resulting_df
-
-# pumps = ['Engelerschans', 'Maaspoort', 'Rompert', 'Oude Engelenseweg', 'Helftheuvel']
-# for pump in pumps:
-#     pump_df = calculate_single_cm_to_m3(pump)
-#     pump_df.to_csv(f"../processed/{pump}_single_cm_m3.csv")

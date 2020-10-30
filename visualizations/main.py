@@ -2,7 +2,9 @@ import pandas as pd
 
 from visualizations.plot3a3bPoster import *
 from visualizations.plot_8_9_11_poster import *
+from visualizations.plot_5_pumps_level_to_m3 import *
 from visualizations.visualisations import *
+
 
 def visualization_main():
     # datafile
@@ -33,9 +35,13 @@ def visualization_main():
     # example
     PlotModelComparison(old, new, range(8000, 8168), deriv=0)
 
+    # Plots the 5 pumps and their level in cm at one axis, with the m3 till that level at the other axis
+    plot_5_pumps_level_to_m3()
+
     # TODO explain
     figure2()
     figure4()
+
 
 if __name__ == '__main__':
     visualization_main()

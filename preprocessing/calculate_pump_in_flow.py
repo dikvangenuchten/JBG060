@@ -4,12 +4,8 @@ import numpy as np
 import os.path
 
 
-# Wouters functions, see git for more explaination
-# Full level csv file needs to be created first
-
-def create_full_level():
+def create_full_level(path):
     """Creates the dataframe necesarry to do further calculations about the level in the pumps"""
-    path = '../processed/'
     files = os.listdir(path)
     frames = []
     for file in files:
@@ -29,7 +25,7 @@ def create_full_level():
 
 
 # Function to select all level data from one pump
-def get_pump_level(pump: str, sample_time='1T') -> pd.DataFrame:
+def get_pump_level(pump: str, full_level, sample_time='1T') -> pd.DataFrame:
     """Creates a dataframe with all level data for one pump"""
 
     pump_level = full_level.loc[:, full_level.columns.str.contains(f'{str(pump)}|Tijd|Datum')]
@@ -46,7 +42,7 @@ def get_pump_level(pump: str, sample_time='1T') -> pd.DataFrame:
 
 
 # function to get all flow data from one pump
-def get_flow_data(pump: str, sample_time='1T') -> pd.DataFrame:
+def get_flow_data(pump: str, path, sample_time='1T') -> pd.DataFrame:
     """Creates data frame with all flow data for one pump"""
     files = os.listdir(path)
 
@@ -66,7 +62,7 @@ def get_flow_data(pump: str, sample_time='1T') -> pd.DataFrame:
     return flow_data
 
 
-def pump_flow_level(pump: str, sample_time='1T'):
+def pump_flow_level(pump: str, full_level, path, sample_time='1T'):
     """"Combines both level and flow dataframes to one dataframe"""
 
     dct = {'Helftheuvel': ['003', '301'], 'Engelerschans': ['004', 'FIT201'], 'Maaspoort': ['006', '501'],
@@ -75,20 +71,20 @@ def pump_flow_level(pump: str, sample_time='1T'):
     if pump not in dct.keys():
         return f'Pump name not recognized, try one of these {dct.keys()}'
 
-    df_level = get_pump_level(dct[pump][0], sample_time)
-    df_flow = get_flow_data(dct[pump][1], sample_time)
+    df_level = get_pump_level(dct[pump][0], full_level, sample_time)
+    df_flow = get_flow_data(dct[pump][1], path, sample_time)
 
     df_flow_level = pd.merge(df_level, df_flow, how='inner', left_index=True, right_index=True)
     return df_flow_level
 
 
-def get_in_flow_approximation(pump: str, sample_time="1T"):
+def get_in_flow_approximation(pump: str, full_level, path, sample_time="1T"):
     """
     Calculates the cycle length and sums the outflow in one cycle to finally devide it by the length of the cycle,
     giving the average over the cycle, then smoothening it with 100 rolling
     """
 
-    df_pump = pump_flow_level(pump, sample_time="1T")
+    df_pump = pump_flow_level(pump, full_level, path, sample_time="1T")
 
     df_concat = df_pump.copy()
     df_concat = df_concat.fillna(method='pad')
@@ -140,11 +136,3 @@ def get_in_flow_approximation(pump: str, sample_time="1T"):
     df_pump['flow_in'] = df_concat['SMA_cycle_flow']
     return df_pump
 
-
-# if not os.path.exists('../processed/full_level.csv'):
-#     create_full_level()
-# full_level = pd.read_csv('../processed/full_level.csv')
-# pumps = ['Helftheuvel', 'Engelerschans', 'Maaspoort', 'Rompert', 'Oude Engelenseweg']
-# for pump in pumps:
-#     pump_flow = get_in_flow_approximation(pump)
-#     pump_flow.to_csv(f"../processed/pump_in_flow_appr_{pump}.csv")
