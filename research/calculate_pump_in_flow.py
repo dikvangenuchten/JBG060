@@ -1,11 +1,31 @@
 import pandas as pd
 import os
 import numpy as np
+import os.path
+
 
 # Wouters functions, see git for more explaination
 # Full level csv file needs to be created first
-path = '../processed/'
-full_level = pd.read_csv('../processed/full_level.csv')
+
+def create_full_level():
+    """Creates the dataframe necesarry to do further calculations about the level in the pumps"""
+    path = '../processed/'
+    files = os.listdir(path)
+    frames = []
+    for file in files:
+        if 'level' in file:
+            file = pd.read_csv(f'{path}/{file}')
+            frames.append(file)
+
+    full_level = pd.concat(frames, ignore_index=True)
+    full_level['Datum'] = pd.to_datetime(full_level['Datum'])
+    full_level['Tijd'] = pd.to_datetime(full_level['Tijd'])
+    full_level['Tijd'] = full_level['Tijd'].dt.time
+    full_level.sort_values(by=['Datum', 'Tijd'], inplace=True)
+    full_level['Datum'] = full_level['Datum'].astype(str)
+    full_level['Tijd'] = full_level['Tijd'].astype(str)
+    full_level.reset_index(drop=True, inplace=True)
+    full_level.to_csv('../processed/full_level.csv')
 
 
 # Function to select all level data from one pump
@@ -120,6 +140,10 @@ def get_in_flow_approximation(pump: str, sample_time="1T"):
     df_pump['flow_in'] = df_concat['SMA_cycle_flow']
     return df_pump
 
+
+# if not os.path.exists('../processed/full_level.csv'):
+#     create_full_level()
+# full_level = pd.read_csv('../processed/full_level.csv')
 # pumps = ['Helftheuvel', 'Engelerschans', 'Maaspoort', 'Rompert', 'Oude Engelenseweg']
 # for pump in pumps:
 #     pump_flow = get_in_flow_approximation(pump)
