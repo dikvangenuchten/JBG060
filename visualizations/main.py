@@ -1,16 +1,16 @@
 import pandas as pd
 
-from visualizations.plot3a3bPoster import *
-from visualizations.plot_8_9_11_poster import *
+from visualizations.plotsRainfallPoster3aLargePredictionErrors3bFalseNegatives.py import *
+from visualizations.plot8And9_InflowPredictions_plot11_OutflowOverTime_poster.py import *
 from visualizations.plot_5_pumps_level_to_m3 import *
 from visualizations.visualisations import *
 
 
 def visualization_main():
     # datafile
-    preds = pd.read_csv('RainfallPredictionsHourlyV3.csv')
-    FalseNegPlot(preds, 'hand.png')
-    diffPropPlot(preds, 'voet.png')
+    preds = pd.read_csv('processed\\rainfallpredictionsHourly.csv')
+    FalseNegPlot(preds, 'FalseNegatives.png')
+    diffPropPlot(preds, 'DifferentProportions.png')
 
     # plot fig 8 and 9 poster
     # directory with pump model outputs
