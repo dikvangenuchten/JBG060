@@ -4,9 +4,9 @@ import os
 import numpy as np
 
 
-def loadHarmonie(path_to_rainfall: str = 'rainfall/rainfall/') -> pd.DataFrame:
+def loadHarmonie(path_to_rainfall: str = 'data/rainfall/') -> pd.DataFrame:
     """opening and concatenating the data for harmonie predictions (only predicts juli-august)
-    path_to_rainfall is a path to the folder with all rainfall predictions, standard: rainfall/rainfall/"""
+    path_to_rainfall is a path to the folder with all rainfall predictions, standard: data/rainfall/"""
     Harmonie = []
     Harmonie.append(pd.read_csv(path_to_rainfall + '2018_harmonie_juli_augustus_predictions.csv', ';'))
     Harmonie.append(pd.read_csv(path_to_rainfall + '2019_harmonie_juli_augustus_predictions.csv', ','))
@@ -24,9 +24,9 @@ def loadHarmonie(path_to_rainfall: str = 'rainfall/rainfall/') -> pd.DataFrame:
     return Harmonie
 
 
-def loadHirlam(path_to_rainfall: str = 'rainfall/rainfall/') -> pd.DataFrame:
+def loadHirlam(path_to_rainfall: str = 'data/rainfall/') -> pd.DataFrame:
     """opening and concatenating the data for hirlam predictions
-    path_to_rainfall is a path to the folder with all rainfall predictions, standard: rainfall/rainfall/"""
+    path_to_rainfall is a path to the folder with all rainfall predictions, standard: data/rainfall/"""
     Hirlam = []
     Hirlam.append(pd.read_csv(path_to_rainfall + '2018_hirlam_predictions.csv', ';'))
     Hirlam.append(pd.read_csv(path_to_rainfall + '2019_hirlam_predictions.csv', ','))
@@ -69,7 +69,7 @@ def get_rainfall_predictions(data: pd.DataFrame) -> list:
     return frames
 
 
-def loadActualRainfall(path_to_rain_timeseries: str = 'rainfall/rainfall/rain_timeseries/') -> pd.DataFrame:
+def loadActualRainfall(path_to_rain_timeseries: str = 'data/rainfall/rain_timeseries/') -> pd.DataFrame:
     """Loads the files containing the actual factual rainfall data, takes as input a path to where this data is kept,
      should normally be in the rain_timeseries folder"""
     actualfiles = os.listdir(os.getcwd() + '/' + path_to_rain_timeseries)
@@ -103,8 +103,8 @@ def cleanActualRainfall(actual_rainfall: pd.DataFrame) -> pd.DataFrame:
     return actual_days
 
 
-def predictions(location_Hirlam: str = 'rainfall/rainfall/', location_Harmonie: str = 'rainfall/rainfall/',
-                location_rain_time_series_data: str = 'rainfall/rainfall/rain_timeseries') -> pd.DataFrame:
+def predictions(location_Hirlam: str = 'data/rainfall/', location_Harmonie: str = 'data/rainfall/',
+                location_rain_time_series_data: str = 'data/rainfall/rain_timeseries') -> pd.DataFrame:
     """loads both predictions and actual data and compiles them into one file suitable for further processing,
     requires the place where:
     the hirlam is stored as: location_Hirlam
