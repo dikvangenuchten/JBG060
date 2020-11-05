@@ -204,7 +204,7 @@ class DataHandler:
         diff_t = level_t - level_t-1
         with diff_0 = 0
         """
-        return self.diff[t:t + delta]
+        return self.inflow[t:t + delta]
 
     def _get_flow(self, t, delta=48):
         """
