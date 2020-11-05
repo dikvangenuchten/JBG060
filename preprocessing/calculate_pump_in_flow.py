@@ -21,7 +21,7 @@ def create_full_level(path):
     full_level['Datum'] = full_level['Datum'].astype(str)
     full_level['Tijd'] = full_level['Tijd'].astype(str)
     full_level.reset_index(drop=True, inplace=True)
-    full_level.to_csv('../processed/full_level.csv')
+    full_level.to_csv('processed/full_level.csv')
 
 
 # Function to select all level data from one pump

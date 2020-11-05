@@ -10,9 +10,10 @@ from digital_twin import utils
 class DataHandler:
     def __init__(self, pump_station_name: str,
                  actual_rainfall_path: str = "processed/data_rainfall_rain_timeseries_Download__.csv",
-                 predicted_rainfall_path: str = "processed/rainfallpredictionsHourlyV3.csv",
+                 predicted_rainfall_path: str = "processed/rainfallpredictionsHourly.csv",
                  in_flow_path: str = os.path.join('processed', 'pump_in_flow_appr_Helftheuvel.csv'),
                  dry_days: bool = True, wet_days: bool = False, sample_time: str = "H"):
+        self.diff = None
         self.actual_rainfall_path = actual_rainfall_path
         self.actual_rainfall_data = None
 
@@ -53,8 +54,7 @@ class DataHandler:
 
             # in_flow_df["time_hour"] = pd.to_datetime(in_flow_df.index).hour.astype(int)
             self.inflow = in_flow_df.resample(self.sample_time).pad().flow_in.resample(self.sample_time).mean()
-            # TODO fix naming in in_flow_df
-            # TODO Change level to volume
+
             self.pump_speed = self.get_mean_fastest_pump_speed(in_flow_df.resample(self.sample_time).mean())
             self.volume = pd.read_csv(os.path.join("processed", f"{self.pump_station_name}_single_cm_m3.csv"),
                                       index_col=0)
