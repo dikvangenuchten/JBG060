@@ -1,7 +1,7 @@
 import pandas as pd
 
-from visualizations.plotsRainfallPoster3aLargePredictionErrors3bFalseNegatives.py import *
-from visualizations.plot8And9_InflowPredictions_plot11_OutflowOverTime_poster.py import *
+from visualizations.plotsRainfallPoster3aLargePredictionErrors3bFalseNegatives import *
+from visualizations.plot8And9_InflowPredictions_plot11_OutflowOverTime_poster import *
 from visualizations.plot_5_pumps_level_to_m3 import *
 from visualizations.visualisations import *
 
@@ -19,7 +19,7 @@ def visualization_main():
     # range object
     dayrange = range(8137, 8161)
     # example
-    MultiplotPredictions(directory=direct, hourrange=dayrange, smart=0, dry=1, howlong='day')
+    MultiplotPredictions(directory=direct, hour_range=dayrange, smart=0, dry=1, howlong='day')
 
     # plot fig 11 poster
     old = pd.read_csv(
