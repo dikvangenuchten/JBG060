@@ -8,9 +8,9 @@ This will install all the correct version of the packages used.
 4.	Add source root to pythonpath
 5.	Put the four zipped folders inside …/source_root/data
 6.	Run: python main.py \
-This will run: \
-    1.	The preprocessing steps needed\
-    2.	The simulation and train the needed models\
+This will run: 
+    1.	The preprocessing steps needed
+    2.	The simulation and train the needed models
     3.	The visualization present in the poster
       
 To run a simulation of how the current system works set dumb in main.py to true
