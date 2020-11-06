@@ -4,5 +4,5 @@ from visualizations.main import visualization_main
 
 if __name__ == '__main__':
     preprocessing_main()
-    simulation_main()
+    simulation_main(dumb=False)
     visualization_main()

@@ -3,7 +3,8 @@ from digital_twin.sewage_system import SewageSystem
 
 from digital_twin.utils import initiate_pump, load_train_data, prepare_data
 
-def simulation_main():
+
+def simulation_main(dumb=False):
     pump_names = [
         'Engelerschans',
         'Maaspoort',
@@ -30,8 +31,10 @@ def simulation_main():
     for time_step in tqdm(range(start_t, end_t, 1), total=end_t - start_t):
         model_data = {pump_name: data_handlers.get(pump_name).get_x_data(time_step) for pump_name in pump_names}
         inflow_data = {pump_name: data_handlers.get(pump_name).get_y_data(time_step)[0] for pump_name in pump_names}
-        sewage_system.step(model_data, inflow_data)
-        # sewage_system.dumb_step(model_data, inflow_data, lookahead=True)
+        if not dumb:
+            sewage_system.step(model_data, inflow_data)
+        else:
+            sewage_system.dumb_step(model_data, inflow_data, lookahead=True)
         sewage_system.save_data(t=time_step, directory=data_save_dir)
     print("Done")
 
