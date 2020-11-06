@@ -16,3 +16,7 @@ Useful functions/folders that can be ripped out to get a head start:
 Preprocessing: Unzipify.py automatically unzips all folders
 digital_twin: A low key simulation of the sewage system, can keep track of the internal 
 volume of water when testing your own models, and writes a summary to file every step.
+
+
+In the folder DEPRECATED all unnecessary and old files reside
+They however may contain useful code for next generations, therefore we decided to not delete those
