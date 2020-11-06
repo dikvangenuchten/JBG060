@@ -80,7 +80,7 @@ def load_train_data(pump_name) -> DataHandler:
     data_handler = DataHandler(pump_station_name=pump_name,
                                actual_rainfall_path=os.path.join("processed",
                                                                  "data_rainfall_rain_timeseries_Download__.csv"),
-                               predicted_rainfall_path=os.path.join("processed", "rainfallpredictionsHourlyV3.csv"),
+                               predicted_rainfall_path=os.path.join("processed", "rainfallpredictionsHourly.csv"),
                                in_flow_path=os.path.join("processed", f"pump_in_flow_appr_{pump_name}.csv"))
     data_handler.load_data()
     return data_handler

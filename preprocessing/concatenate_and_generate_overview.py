@@ -109,8 +109,11 @@ def save_table(table, result, location, new_file, dataframes):
         if len(dataframes[result.group(1)]) != len(old_df) + len(table):
             log_error(f"ERROR: found duplicate rows in concatenating {new_file}")
     else:
-        overview_location = os.path.join('processed', '1. Overview.xlsx')
-        overview = pd.read_excel(overview_location, index_col=0)
+        overview_location = os.path.join('processed', 'Overview.xlsx')
+        try:
+            overview = pd.read_excel(overview_location, index_col=0)
+        except FileNotFoundError:
+            overview = pd.DataFrame(columns=["location", "columns", "nr_rows"])
         overview = overview.append({
             'location': location,
             'columns': ', '.join(table.columns),
@@ -203,8 +206,11 @@ def save_and_make_overview(dfs):
 
     :param dfs: array of panda DataFrames
     """
-    overview_location = os.path.join('processed', '1. Overview.xlsx')
-    overview = pd.read_excel(overview_location, index_col=0)
+    overview_location = os.path.join('processed', 'Overview.xlsx')
+    try:
+        overview = pd.read_excel(overview_location, index_col=0)
+    except FileNotFoundError:
+        overview = pd.DataFrame(columns=["location", "columns", "nr_rows"])
     for df_location in dfs:
         new_location = df_location.replace(f"..{os.path.sep}", "").replace(f"{os.path.sep}", "_")
         if dfs[df_location].empty:
@@ -219,6 +225,10 @@ def save_and_make_overview(dfs):
             dfs[df_location].to_csv(os.path.join("processed", f"{new_location}.csv"), index=False)
         else:
             dfs[df_location].sort_index().to_csv(os.path.join("processed", f"{new_location}.csv"))
+
+    directory = os.path.dirname(overview_location)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
     overview.to_excel(overview_location)
 
